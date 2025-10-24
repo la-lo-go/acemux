@@ -1,6 +1,7 @@
 # AceMux
 
-> [!WARNING]  This project is currently in beta stage. Many features are still under development and may not work as expected. Expect bugs and incomplete functionality.
+> [!WARNING]  
+> This project is currently in beta stage. Many features are still under development and may not work as expected. Expect bugs and incomplete functionality.
 
 <div align="center">
   <img src="docs/preview.png" alt="AceMux Preview" width="800">
@@ -68,7 +69,8 @@ bun run preview
 
 AceMux includes Docker configuration for easy deployment with AceStream Engine included.
 
-> [!WARNING] This is VERY beta and not recommended for production use yet.
+> [!WARNING] 
+> This is VERY beta and not recommended for production use yet.
 
 ### Quick Start with Docker
 
