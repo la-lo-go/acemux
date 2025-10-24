@@ -1,0 +1,129 @@
+---
+import { getStream } from '../lib/db'
+import '../styles.css'
+
+// Direct database access instead of making a fetch call
+const id = Astro.params.id as string
+const stream = getStream(id) 
+const title = stream?.name ?? id
+
+// Redirect to homepage if stream not found
+if (!stream) {
+  return Astro.redirect('/')
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title} · AceMux</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  </head>
+  <body class="m-0 bg-[#0b0f14] text-[#e6eef7] font-[system-ui,Segoe UI,Roboto,Arial,sans-serif] leading-[1.4]">
+    <div class="max-w-[980px] mx-auto p-6">
+      <a class="text-[#9fb3c8] no-underline" href="/">&larr; Back</a>
+      <h1 class="my-2 mb-1 text-[22px]">{title}</h1>
+      <p class="opacity-80 text-xs">{id}</p>
+
+      <video id="player" controls playsinline class="w-full h-auto bg-black rounded-xl"></video>
+    </div>
+
+    <script define:vars={{ id }}>
+      document.addEventListener('DOMContentLoaded', async () => {
+        const src = `/ace/manifest.m3u8?id=${encodeURIComponent(id)}`
+        console.log('AceStream URL solicitada:', src)
+        const video = document.getElementById('player')
+        if (!video) return
+        
+        // Check if AceStream server is accessible first
+        try {
+          const testResponse = await fetch(src, { method: 'HEAD' })
+          if (!testResponse.ok) {
+            if (testResponse.status === 502) {
+              const errorData = await fetch(src).then(r => r.json()).catch(() => ({}))
+              video.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; background: #1a1a1a; color: #fff; text-align: center; border-radius: 12px;">
+                  <h3 style="margin: 0 0 10px 0; color: #ff6b6b;">AceStream Server Not Available</h3>
+                  <p style="margin: 0 0 10px 0; opacity: 0.8;">Cannot connect to AceStream server at:</p>
+                  <code style="background: #2a2a2a; padding: 5px 10px; border-radius: 4px; margin: 0 0 15px 0;">${errorData.base || 'Unknown'}</code>
+                  <p style="margin: 0; font-size: 14px; opacity: 0.6;">Make sure AceStream Engine is running and accessible.</p>
+                </div>
+              `
+              return
+            } else if (testResponse.status === 501) {
+              // Handle the 501 Not Implemented error specifically
+              video.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; background: #1a1a1a; color: #fff; text-align: center; border-radius: 12px;">
+                  <h3 style="margin: 0 0 10px 0; color: #ff6b6b;">AceStream Not Implemented</h3>
+                  <p style="margin: 0 0 10px 0; opacity: 0.8;">The AceStream server responded with 501 Not Implemented.</p>
+                  <p style="margin: 0; font-size: 14px; opacity: 0.6;">This may happen if the AceStream engine is running but the stream ID is invalid or the stream isn't loading properly.</p>
+                </div>
+              `
+              console.error('AceStream returned 501 Not Implemented for stream ID:', id)
+              return
+            }
+            throw new Error(`Server responded with ${testResponse.status}`)
+          }
+        } catch (error) {
+          console.error('AceStream connection test failed:', error)
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          video.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; background: #1a1a1a; color: #fff; text-align: center; border-radius: 12px;">
+              <h3 style="margin: 0 0 10px 0; color: #ff6b6b;">Connection Error</h3>
+              <p style="margin: 0 0 10px 0; opacity: 0.8;">Failed to connect to AceStream server</p>
+              <code style="background: #2a2a2a; padding: 5px 10px; border-radius: 4px; margin: 5px 0; font-size: 12px; max-width: 100%; overflow-wrap: break-word;">${errorMessage}</code>
+              <p style="margin: 10px 0 0; font-size: 14px; opacity: 0.6;">
+                Check that:
+                <ul style="text-align: left; margin: 5px 0 0 0; padding-left: 20px;">
+                  <li>AceStream Engine is running</li>
+                  <li>The stream ID is valid</li>
+                  <li>You have proper network connectivity</li>
+                </ul>
+              </p>
+            </div>
+          `
+          return
+        }
+        
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = src
+          try { await video.play() } catch {}
+        } else if (window.Hls && window.Hls.isSupported()) {
+          const hls = new window.Hls({ liveDurationInfinity: true })
+          hls.loadSource(src)
+          hls.attachMedia(video)
+          hls.on(window.Hls.Events.MANIFEST_PARSED, ()=> video.play().catch(()=>{}))
+          hls.on(window.Hls.Events.ERROR, (event, data) => {
+            console.error('HLS Error:', data)
+            if (data.fatal) {
+              let errorDescription = data.details || 'Unknown error'
+              let helpText = ''
+              
+              // Add more specific help text based on error type
+              if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+                helpText = 'This could be due to network connectivity issues or the stream source being unavailable.'
+              } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+                helpText = 'This could be due to corrupted media or codec issues. Try refreshing the page.'
+                // Try to recover from media errors
+                hls.recoverMediaError()
+              }
+              
+              video.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; background: #1a1a1a; color: #fff; text-align: center; border-radius: 12px;">
+                  <h3 style="margin: 0 0 10px 0; color: #ff6b6b;">Playback Error</h3>
+                  <p style="margin: 0 0 10px 0; opacity: 0.8;">Failed to load the stream</p>
+                  <code style="background: #2a2a2a; padding: 5px 10px; border-radius: 4px; margin: 5px 0; font-size: 12px;">${errorDescription}</code>
+                  <p style="margin: 10px 0 0; font-size: 14px; opacity: 0.8;">${helpText}</p>
+                  <button onclick="window.location.reload()" style="margin-top: 15px; background: #4a5568; border: none; color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Refresh Page</button>
+                </div>
+              `
+            }
+          })
+        } else {
+          alert('HLS not supported in this browser.')
+        }
+      });
+    </script>
+  </body>
+</html>

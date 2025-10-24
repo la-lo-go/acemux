@@ -1,16 +1,237 @@
 ---
+import { getAllStreams, type Stream } from '../lib/db'
+import StreamForm from '../lib/components/StreamForm.astro'
+import StreamCard from '../lib/components/StreamCard.astro'
+import '../styles.css'
 
+// Server-side data fetching for SSR
+let streams: Stream[] = []
+let error = ''
+
+try {
+  streams = getAllStreams()
+} catch (err) {
+  console.error('Failed to load streams:', err)
+  error = err instanceof Error ? err.message : 'Unknown error loading streams'
+  streams = []
+}
+const hasStreams = streams.length > 0
 ---
 
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AceMux - Stream Manager</title>
+    <meta name="description" content="AceMux - A simple and elegant stream manager" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>" />
+    <script define:vars={{ aceStreamBase: import.meta.env.ACESTREAM_BASE || 'http://acestream:6878' }}>
+      window.aceStreamBase = aceStreamBase.replace(/\/+$/, '');
+    </script>
+  </head>
+  <body class="m-0 bg-[#0a0d12] min-h-screen text-[#e6eef7] font-[system-ui,Segoe UI,Roboto,Arial,sans-serif] leading-[1.4] animate-fadeIn">
+    <div class="relative mx-auto w-full px-6 py-8 max-w-[1000px] xl:max-w-[1040px] 2xl:max-w-[1080px] transition-[max-width] duration-300">
+      <div class="flex items-center justify-between gap-4 mb-8 flex-wrap">
+        <h1 class="m-0 text-[32px] font-bold tracking-tight text-sky-300 drop-shadow-sm">AceMux</h1>
+        {hasStreams && (
+          <button id="showCreate" class="px-5 py-2.5 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm font-medium shadow-md">+ Add Stream</button>
+        )}
+      </div>
+
+      <StreamForm hasStreams={hasStreams} />
+
+      <div id="list" class="grid gap-5 animate-slideUp md:grid-cols-2">
+        {!hasStreams && <p class="opacity-80 text-xs italic text-center py-6 md:col-span-2">No streams yet. Add the first one above.</p>}
+        {streams.map((s: Stream) => (
+          <StreamCard stream={s} />
+        ))}
+      </div>
+    </div>
+
+    <script>
+      // Add a smooth reveal animation when page loads
+      window.addEventListener('load', () => {
+        document.body.classList.add('opacity-100');
+        document.body.classList.remove('opacity-0');
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const showCreateBtn = document.getElementById('showCreate');
+        const cancelCreateBtn = document.getElementById('cancelCreate');
+        const createWrapper = document.getElementById('createWrapper');
+        
+        if (showCreateBtn && createWrapper) {
+          showCreateBtn.addEventListener('click', () => {
+            createWrapper.classList.remove('hidden');
+            createWrapper.classList.add('animate-slideUp');
+            showCreateBtn.style.display = 'none';
+          });
+        }
+        
+        if (cancelCreateBtn && createWrapper && showCreateBtn) {
+          cancelCreateBtn.addEventListener('click', () => {
+            createWrapper.classList.add('hidden');
+            showCreateBtn.style.display = 'block';
+          });
+        }
+
+        const createForm = document.getElementById('create') as HTMLFormElement;
+        const errorEl = document.getElementById('err');
+        
+        if (createForm) {
+          createForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(createForm);
+            const data = Object.fromEntries(formData);
+            
+            try {
+              const res = await fetch('/api/streams', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+              });
+              
+              if (res.ok) {
+                location.reload();
+              } else {
+                const error = await res.json();
+                if (errorEl) {
+                  errorEl.textContent = error.error || 'Error creating stream';
+                  errorEl.hidden = false;
+                }
+              }
+            } catch (err) {
+              if (errorEl) {
+                errorEl.textContent = 'Network error';
+                errorEl.hidden = false;
+              }
+            }
+          });
+        }
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        // aceStreamBase is already defined globally in the head
+        
+        document.addEventListener('click', async (e) => {
+          const target = e.target;
+          if (!target || !(target instanceof Element)) return;
+          
+          const card = target.closest('.stream-card');
+          if (!card) return;
+          
+          const streamId = card.getAttribute('data-id');
+          const viewEl = card.querySelector('[data-view]');
+          const editEl = card.querySelector('[data-editform]');
+          
+          if (target.matches('[data-edit]')) {
+            viewEl?.setAttribute('hidden', '');
+            editEl?.removeAttribute('hidden');
+          } else if (target.matches('[data-cancel]')) {
+            viewEl?.removeAttribute('hidden');
+            editEl?.setAttribute('hidden', '');
+          } else if (target.matches('[data-save]')) {
+            const inputs = editEl?.querySelectorAll('input');
+            const data: Record<string, string> = {};
+            inputs?.forEach(input => {
+              if (input instanceof HTMLInputElement) {
+                data[input.name] = input.value;
+              }
+            });
+            
+            try {
+              const res = await fetch(`/api/streams/${streamId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+              });
+              
+              if (res.ok) {
+                location.reload();
+              }
+            } catch (err) {
+              console.error('Error updating stream:', err);
+            }
+          } else if (target.matches('[data-delete]')) {
+            if (confirm('Delete this stream?')) {
+              try {
+                const res = await fetch(`/api/streams/${streamId}`, {
+                  method: 'DELETE'
+                });
+                
+                if (res.ok) {
+                  location.reload();
+                }
+              } catch (err) {
+                console.error('Error deleting stream:', err);
+              }
+            }
+          } else if (target.matches('[data-copy-link]')) {
+            if (!streamId) return;
+            
+            // Use the global aceStreamBase variable set in the head
+            const aceStreamUrl = `/ace/manifest.m3u8?id=${encodeURIComponent(streamId)}`;
+            const fullUrl = window.aceStreamBase + aceStreamUrl;
+            
+            try {
+              await navigator.clipboard.writeText(fullUrl);
+              
+              // Show feedback
+              const originalText = target.innerHTML;
+              target.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+                Copied!
+              `;
+              if (target instanceof HTMLElement) {
+                target.style.color = '#10b981';
+              }
+              
+              setTimeout(() => {
+                target.innerHTML = originalText;
+                if (target instanceof HTMLElement) {
+                  target.style.color = '';
+                }
+              }, 2000);
+            } catch (err) {
+              console.error('Error copying to clipboard:', err);
+              // Fallback for older browsers
+              const textArea = document.createElement('textarea');
+              // fullUrl is already using aceStreamBase from the code above
+              textArea.value = fullUrl;
+              document.body.appendChild(textArea);
+              textArea.select();
+              try {
+                document.execCommand('copy');
+                
+                // Show feedback
+                const originalText = target.innerHTML;
+                target.innerHTML = `
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 6 9 17l-5-5"/>
+                  </svg>
+                  Copied!
+                `;
+                if (target instanceof HTMLElement) {
+                  target.style.color = '#10b981';
+                }
+                
+                setTimeout(() => {
+                  target.innerHTML = originalText;
+                  if (target instanceof HTMLElement) {
+                    target.style.color = '';
+                  }
+                }, 2000);
+              } catch (fallbackErr) {
+                console.error('Fallback copy failed:', fallbackErr);
+                alert(`Copy this link: ${fullUrl}`);
+              }
+              document.body.removeChild(textArea);
+            }
+          }
+        });
+      });
+    </script>
+  </body>
 </html>

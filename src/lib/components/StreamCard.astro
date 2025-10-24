@@ -1,0 +1,101 @@
+---
+import { Icon } from 'astro-icon/components';
+
+const { stream } = Astro.props;
+
+const aceStreamBase = (import.meta.env.ACESTREAM_BASE || 'http://acestream:6878').replace(/\/+$/, '');
+const watchUrl = `/${stream.id}`;
+const vlcUrl = `vlc://${aceStreamBase}/ace/manifest.m3u8?id=${encodeURIComponent(stream.id)}`;
+---
+
+<div class="stream-card group relative overflow-hidden bg-[#111a24] border border-[#1f2a37]/70 rounded-2xl p-5 md:p-6 shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/40 transition-shadow" data-id={stream.id}>
+  {stream.photo_url && (
+    <div class="mb-4 rounded-xl overflow-hidden relative">
+      <img 
+        src={stream.photo_url} 
+        alt={stream.name} 
+        class="w-full h-48 md:h-60 object-cover rounded-xl bg-black" 
+      />
+      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none"></div>
+      <div class="absolute bottom-0 left-0 p-4 w-full">
+        <h2 class="m-0 text-xl font-semibold leading-tight text-white drop-shadow-md">{stream.name}</h2>
+      </div>
+    </div>
+  )}
+
+  <div class="space-y-3" data-view>
+    {!stream.photo_url && <h2 class="m-0 mb-4 text-xl font-semibold leading-tight text-white">{stream.name}</h2>}
+    
+    <div class="hidden">{stream.id}</div>
+    
+    <div class="flex flex-wrap gap-2 justify-between">
+      <div class="flex flex-wrap gap-2">
+        <a class="px-5 py-2 rounded-xl border border-sky-800/30 bg-sky-800/70 hover:bg-sky-700 text-white text-sm no-underline inline-flex items-center gap-1 font-medium shadow-sm transition-colors" href={watchUrl}>
+          Watch
+        </a>
+        
+        <button 
+          class="px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm inline-flex items-center gap-1.5 transition-colors hover:border-slate-600/40"
+          data-copy-link 
+          title="Copy AceStream link"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+            <path d="m4 16c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2"/>
+          </svg>
+          Copy Link
+        </button>
+        
+        <a 
+          class="px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm inline-flex items-center gap-1.5 transition-colors hover:border-slate-600/40"
+          href={vlcUrl} 
+          title="Open in VLC"
+        >
+          <Icon name="vlc" width="14" height="14" />
+          VLC
+        </a>
+      </div>
+      
+      <div class="flex flex-wrap gap-2">
+        <button class="px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm transition-colors hover:border-slate-600/40" data-edit>
+          Edit
+        </button>
+        
+        <button class="px-3 py-2 rounded-xl border border-[#7f1d1d]/60 bg-[#2a1618] hover:bg-[#351a1c] transition-colors text-rose-200/90 hover:text-rose-200" data-delete title="Delete">
+          <Icon name="trash" width="16" height="16" />
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="space-y-3 mt-2" data-editform hidden>
+    <div class="px-4 py-2 rounded-lg border border-slate-700/70 bg-[#08101a] text-sm opacity-70 font-mono text-[11px] break-all">
+      <span class="text-blue-300/80 block mb-1">Stream ID (not editable)</span>
+      {stream.id}
+    </div>
+    
+    <input 
+      class="w-full px-4 py-2 rounded-lg border border-slate-700/70 bg-[#0b1220] text-sm"
+      name="name" 
+      value={stream.name} 
+      placeholder="Name" 
+    />
+    
+    <input 
+      class="w-full px-4 py-2 rounded-lg border border-slate-700/70 bg-[#0b1220] text-sm"
+      name="photo_url" 
+      value={stream.photo_url || ''} 
+      placeholder="Photo URL" 
+    />
+    
+    <div class="flex flex-wrap gap-2 pt-1">
+      <button class="px-4 py-2 rounded-lg border border-slate-700/70 bg-[#0b1220] hover:bg-[#13202b] text-sm" data-save>
+        Save
+      </button>
+      
+      <button class="px-4 py-2 rounded-lg border border-slate-700/70 bg-transparent hover:bg-[#13202b] text-sm" data-cancel>
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>

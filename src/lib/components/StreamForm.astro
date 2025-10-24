@@ -1,0 +1,20 @@
+---
+const { hasStreams } = Astro.props;
+---
+<div id="createWrapper" class={hasStreams ? 'hidden' : ''}>
+  <div class="bg-[#111a25] border border-[#1f2a37]/70 rounded-2xl p-7 mb-10 shadow-xl shadow-black/30 animate-slideUp">
+    <h3 class="text-lg font-medium mb-5 text-white/90">Create new stream</h3>
+    <form id="create" class="grid gap-4" autocomplete="off">
+      <div class="grid md:grid-cols-2 gap-4">
+        <input class="w-full px-4 py-3 rounded-xl border border-slate-700/50 bg-[#0a101a] focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder:text-slate-400/70" name="id" placeholder="AceStream CONTENT_ID *" required />
+        <input class="w-full px-4 py-3 rounded-xl border border-slate-700/50 bg-[#0a101a] focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder:text-slate-400/70" name="name" placeholder="Name *" required />
+      </div>
+      <input class="w-full px-4 py-3 rounded-xl border border-slate-700/50 bg-[#0a101a] focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder:text-slate-400/70" name="photo_url" placeholder="Photo URL" />
+      <div class="flex items-center gap-4 pt-1">
+        <button class="px-5 py-2.5 rounded-xl border border-sky-900/30 bg-sky-600 hover:bg-sky-500 text-white text-sm font-medium shadow-md transition-colors" type="submit">Add Stream</button>
+        {hasStreams && <button type="button" id="cancelCreate" class="text-xs text-slate-400 hover:text-white transition-colors">Cancel</button>}
+      </div>
+      <p id="err" class="text-rose-300 text-sm font-medium pt-1" hidden></p>
+    </form>
+  </div>
+</div>

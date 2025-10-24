@@ -1,0 +1,21 @@
+services:
+  acestream:
+    image: ghcr.io/martinbjeldbak/acestream-http-proxy:latest
+    container_name: acestream
+    environment:
+      - ALLOW_REMOTE_ACCESS=true
+    ports:
+      - "6878:6878"
+    restart: unless-stopped
+    
+  acemux:
+    build: .
+    ports:
+      - "4321:4321"
+    environment:
+      - ACESTREAM_BASE=http://acestream:6878
+      - PORT=4321
+      - HOST=0.0.0.0
+    depends_on:
+      - acestream
+    restart: unless-stopped
