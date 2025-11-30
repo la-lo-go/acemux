@@ -1,0 +1,292 @@
+---
+import PlayerOverlay from './PlayerOverlay.astro'
+import UnmuteBanner from './UnmuteBanner.astro'
+import StatsBar from './StatsBar.astro'
+
+interface Props {
+  streamId: string
+}
+
+const { streamId } = Astro.props
+---
+
+<div class="player-wrapper" data-stream-id={streamId}>
+  <div class="player-container">
+    <video id="player" controls playsinline muted></video>
+    <UnmuteBanner />
+    <PlayerOverlay />
+    <div id="errorLog" class="error-log hidden">
+      <svg id="errorIcon" class="error-icon" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+      </svg>
+      <span id="errorText" class="error-text">-</span>
+      <span id="errorCounter" class="error-counter">0/3</span>
+    </div>
+  </div>
+  <StatsBar />
+</div>
+
+<script>
+  import { AceStreamPlayer, getPlayerElements } from '../../player'
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const wrapper = document.querySelector('.player-wrapper')
+    const streamId = wrapper?.getAttribute('data-stream-id')
+    
+    if (!streamId) {
+      console.error('No stream ID found')
+      return
+    }
+
+    const elements = getPlayerElements()
+    if (!elements) {
+      console.error('Failed to get player elements')
+      return
+    }
+
+    const player = new AceStreamPlayer(elements, streamId)
+    player.init()
+  })
+</script>
+
+<style>
+  .player-wrapper {
+    width: 100%;
+  }
+  
+  .player-container {
+    position: relative;
+    width: 100%;
+    background: #000;
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+  }
+  
+  video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* Error box styles (injected via JS) */
+  :global(.error-box) {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+  }
+  
+  :global(.error-title) {
+    color: #ef4444;
+    font-size: 18px;
+    margin: 0 0 12px 0;
+  }
+  
+  :global(.error-message) {
+    opacity: 0.8;
+    margin: 0 0 12px 0;
+  }
+  
+  :global(.error-code) {
+    background: #2a2a2a;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 12px;
+    margin: 8px 0;
+    word-break: break-all;
+    display: block;
+  }
+  
+  :global(.retry-btn) {
+    background: #3b82f6;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 16px;
+    transition: background 0.2s;
+  }
+  
+  :global(.retry-btn:hover) {
+    background: #2563eb;
+  }
+  
+  /* Retry box styles */
+  :global(.retry-box) {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 24px 32px;
+    max-width: 400px;
+    text-align: center;
+  }
+  
+  :global(.retry-icon) {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 16px;
+    color: #f59e0b;
+    animation: spin 2s linear infinite;
+  }
+  
+  :global(.retry-icon svg) {
+    width: 100%;
+    height: 100%;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  :global(.retry-title) {
+    color: #f59e0b;
+    font-size: 18px;
+    margin: 0 0 8px 0;
+    font-weight: 600;
+  }
+  
+  :global(.retry-detail) {
+    color: #9ca3af;
+    font-size: 13px;
+    margin: 0 0 20px 0;
+    font-family: monospace;
+  }
+  
+  :global(.retry-progress) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  :global(.retry-label) {
+    color: #e5e7eb;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  :global(.retry-dots) {
+    display: flex;
+    gap: 8px;
+  }
+  
+  :global(.retry-dot) {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #374151;
+    transition: all 0.3s ease;
+  }
+  
+  :global(.retry-dot.active) {
+    background: #f59e0b;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+    animation: pulse 1s ease-in-out infinite;
+  }
+  
+  :global(.retry-dot.completed) {
+    background: #ef4444;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+  }
+  
+  :global(.retry-count) {
+    color: #6b7280;
+    font-size: 12px;
+  }
+  
+  /* Error Log styles - compact pill design */
+  .error-log {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 16px;
+    padding: 5px 10px;
+    font-size: 11px;
+    z-index: 20;
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+  }
+  
+  @media (min-width: 480px) {
+    .error-log {
+      top: 10px;
+      left: 10px;
+      right: auto;
+      gap: 8px;
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+  }
+  
+  .error-log.hidden {
+    display: none;
+  }
+  
+  .error-log.critical {
+    background: rgba(220, 38, 38, 0.2);
+    border-color: rgba(220, 38, 38, 0.5);
+  }
+  
+  .error-icon {
+    width: 14px;
+    height: 14px;
+    color: #f59e0b;
+    flex-shrink: 0;
+  }
+  
+  .error-log.critical .error-icon {
+    color: #ef4444;
+  }
+  
+  .error-text {
+    color: #e5e7eb;
+    font-family: monospace;
+    font-size: 10px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  @media (min-width: 480px) {
+    .error-text {
+      font-size: 11px;
+      flex: none;
+      max-width: 180px;
+    }
+  }
+  
+  .error-counter {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f59e0b;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  
+  .error-log.critical .error-counter {
+    background: rgba(220, 38, 38, 0.3);
+    color: #fca5a5;
+  }
+</style>

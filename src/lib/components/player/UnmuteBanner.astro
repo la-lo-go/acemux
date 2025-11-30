@@ -1,0 +1,64 @@
+---
+// Banner to prompt user to unmute audio
+---
+
+<div id="unmuteBanner" class="unmute-banner hidden">
+  <svg class="unmute-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+    <line x1="23" y1="9" x2="17" y2="15"/>
+    <line x1="17" y1="9" x2="23" y2="15"/>
+  </svg>
+  <span>Click to unmute</span>
+</div>
+
+<style>
+  .unmute-banner {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 5;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  
+  @media (min-width: 640px) {
+    .unmute-banner {
+      bottom: 20px;
+      padding: 10px 16px;
+      gap: 8px;
+      font-size: 13px;
+    }
+  }
+  
+  .unmute-banner:hover {
+    background: rgba(59,130,246,0.8);
+    transform: translateX(-50%) scale(1.02);
+  }
+  
+  .unmute-banner.hidden { 
+    display: none; 
+  }
+  
+  .unmute-icon {
+    width: 16px;
+    height: 16px;
+  }
+  
+  @media (min-width: 640px) {
+    .unmute-icon {
+      width: 18px;
+      height: 18px;
+    }
+  }
+</style>
