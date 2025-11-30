@@ -10,8 +10,8 @@ export const POST: APIRoute = async ({ request }) => {
   const id = String(body?.id ?? '').trim()
   const name = String(body?.name ?? '').trim()
   const photo_url = body?.photo_url ? String(body.photo_url).trim() : null
-  if (!id || !name) return new Response(JSON.stringify({ error: 'id and name are required' }), { status: 400 })
-  if (getStream(id)) return new Response(JSON.stringify({ error: 'id already exists' }), { status: 409 })
+  if (!id || !name) return new Response(JSON.stringify({ error: 'id and name are required' }), { status: 400, headers: { 'content-type': 'application/json' } })
+  if (getStream(id)) return new Response(JSON.stringify({ error: 'id already exists' }), { status: 409, headers: { 'content-type': 'application/json' } })
   const s = createStream({ id, name, photo_url })
   return new Response(JSON.stringify(s), { headers: { 'content-type': 'application/json' } })
 }
