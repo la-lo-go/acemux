@@ -30,9 +30,9 @@ const hasStreams = streams.length > 0
     </script>
   </head>
   <body class="m-0 bg-[#0a0d12] min-h-screen text-[#e6eef7] font-[system-ui,Segoe UI,Roboto,Arial,sans-serif] leading-[1.4] animate-fadeIn">
-    <div class="relative mx-auto w-full px-6 py-8 max-w-[1000px] xl:max-w-[1040px] 2xl:max-w-[1080px] transition-[max-width] duration-300">
-      <div class="flex items-center justify-between gap-4 mb-8 flex-wrap">
-        <h1 class="m-0 text-[32px] font-bold tracking-tight text-sky-300 drop-shadow-sm">AceMux</h1>
+    <div class="relative mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 max-w-[1000px] xl:max-w-[1040px] 2xl:max-w-[1080px] transition-[max-width] duration-300">
+      <div class="flex items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8 flex-wrap">
+        <h1 class="m-0 text-2xl sm:text-[32px] font-bold tracking-tight text-sky-300 drop-shadow-sm">AceMux</h1>
         {hasStreams && (
           <button id="showCreate" class="px-5 py-2.5 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm font-medium shadow-md">+ Add Stream</button>
         )}
@@ -40,7 +40,7 @@ const hasStreams = streams.length > 0
 
       <StreamForm hasStreams={hasStreams} />
 
-      <div id="list" class="grid gap-5 animate-slideUp md:grid-cols-2">
+      <div id="list" class="grid gap-5 animate-slideUp md:grid-cols-2 items-start">
         {!hasStreams && <p class="opacity-80 text-xs italic text-center py-6 md:col-span-2">No streams yet. Add the first one above.</p>}
         {streams.map((s: Stream) => (
           <StreamCard stream={s} />

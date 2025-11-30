@@ -2,14 +2,49 @@
 const { hasStreams } = Astro.props;
 ---
 <div id="createWrapper" class={hasStreams ? 'hidden' : ''}>
-  <div class="bg-[#111a25] border border-[#1f2a37]/70 rounded-2xl p-7 mb-10 shadow-xl shadow-black/30 animate-slideUp">
-    <h3 class="text-lg font-medium mb-5 text-white/90">Create new stream</h3>
-    <form id="create" class="grid gap-4" autocomplete="off">
-      <div class="grid md:grid-cols-2 gap-4">
-        <input class="w-full px-4 py-3 rounded-xl border border-slate-700/50 bg-[#0a101a] focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder:text-slate-400/70" name="id" placeholder="AceStream CONTENT_ID *" required />
-        <input class="w-full px-4 py-3 rounded-xl border border-slate-700/50 bg-[#0a101a] focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder:text-slate-400/70" name="name" placeholder="Name *" required />
+  <div class="bg-[#111a25] border border-[#1f2a37]/70 rounded-2xl p-4 sm:p-7 mb-6 sm:mb-10 shadow-xl shadow-black/30 animate-slideUp">
+    <h3 class="text-base sm:text-lg font-medium mb-4 sm:mb-5 text-white/90">Create new stream</h3>
+    <form id="create" class="grid gap-5" autocomplete="off">
+      <div class="grid md:grid-cols-2 gap-5">
+        <div class="relative">
+          <input 
+            class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-slate-700/50 bg-slate-900/80 text-white focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder-transparent" 
+            name="id" 
+            id="acestream-id"
+            placeholder="AceStream ID"
+            pattern="[a-fA-F0-9]{40}"
+            title="Must be a valid 40-character hexadecimal AceStream ID"
+            required 
+          />
+          <label for="acestream-id" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm transition-all duration-200 pointer-events-none peer-focus:top-2.5 peer-focus:text-xs peer-focus:text-sky-400 peer-[:not(:placeholder-shown)]:top-2.5 peer-[:not(:placeholder-shown)]:text-xs">
+            AceStream ID <span class="text-rose-400">*</span>
+          </label>
+          <span id="id-error" class="text-rose-400 text-xs hidden mt-1 block">Invalid: must be 40 hex characters</span>
+        </div>
+        <div class="relative">
+          <input 
+            class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-slate-700/50 bg-slate-900/80 text-white focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder-transparent" 
+            name="name" 
+            id="stream-name"
+            placeholder="Name"
+            required 
+          />
+          <label for="stream-name" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm transition-all duration-200 pointer-events-none peer-focus:top-2.5 peer-focus:text-xs peer-focus:text-sky-400 peer-[:not(:placeholder-shown)]:top-2.5 peer-[:not(:placeholder-shown)]:text-xs">
+            Name <span class="text-rose-400">*</span>
+          </label>
+        </div>
       </div>
-      <input class="w-full px-4 py-3 rounded-xl border border-slate-700/50 bg-[#0a101a] focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder:text-slate-400/70" name="photo_url" placeholder="Photo URL" />
+      <div class="relative">
+        <input 
+          class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-slate-700/50 bg-slate-900/80 text-white focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder-transparent" 
+          name="photo_url" 
+          id="photo-url"
+          placeholder="Photo URL"
+        />
+        <label for="photo-url" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm transition-all duration-200 pointer-events-none peer-focus:top-2.5 peer-focus:text-xs peer-focus:text-sky-400 peer-[:not(:placeholder-shown)]:top-2.5 peer-[:not(:placeholder-shown)]:text-xs">
+          Photo URL <span class="text-slate-500">(optional)</span>
+        </label>
+      </div>
       <div class="flex items-center gap-4 pt-1">
         <button class="px-5 py-2.5 rounded-xl border border-sky-900/30 bg-sky-600 hover:bg-sky-500 text-white text-sm font-medium shadow-md transition-colors" type="submit">Add Stream</button>
         {hasStreams && <button type="button" id="cancelCreate" class="text-xs text-slate-400 hover:text-white transition-colors">Cancel</button>}
@@ -18,3 +53,36 @@ const { hasStreams } = Astro.props;
     </form>
   </div>
 </div>
+
+<script>
+  const idInput = document.getElementById('acestream-id') as HTMLInputElement;
+  const idError = document.getElementById('id-error');
+  const ACESTREAM_ID_REGEX = /^[a-fA-F0-9]{40}$/;
+
+  if (idInput && idError) {
+    idInput.addEventListener('input', () => {
+      const value = idInput.value.trim();
+      
+      if (value === '') {
+        idError.classList.add('hidden');
+        idInput.classList.remove('border-rose-500/50', 'focus:ring-rose-500/40');
+        idInput.classList.add('border-slate-700/50', 'focus:ring-sky-500/40');
+      } else if (!ACESTREAM_ID_REGEX.test(value)) {
+        idError.classList.remove('hidden');
+        idInput.classList.remove('border-slate-700/50', 'focus:ring-sky-500/40');
+        idInput.classList.add('border-rose-500/50', 'focus:ring-rose-500/40');
+      } else {
+        idError.classList.add('hidden');
+        idInput.classList.remove('border-rose-500/50', 'focus:ring-rose-500/40');
+        idInput.classList.add('border-slate-700/50', 'border-emerald-500/50', 'focus:ring-emerald-500/40');
+      }
+    });
+
+    idInput.addEventListener('blur', () => {
+      const value = idInput.value.trim();
+      if (value !== '' && !ACESTREAM_ID_REGEX.test(value)) {
+        idError.classList.remove('hidden');
+      }
+    });
+  }
+</script>

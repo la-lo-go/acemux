@@ -8,7 +8,10 @@ const watchUrl = `/${stream.id}`;
 const vlcUrl = `vlc://${aceStreamBase}/ace/manifest.m3u8?id=${encodeURIComponent(stream.id)}`;
 ---
 
-<div class="stream-card group relative overflow-hidden bg-[#111a24] border border-[#1f2a37]/70 rounded-2xl p-5 md:p-6 shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/40 transition-shadow" data-id={stream.id}>
+<div class:list={[
+  "stream-card group relative overflow-hidden bg-[#111a24] border border-[#1f2a37]/70 rounded-2xl p-5 md:p-6 shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/40 transition-shadow",
+  { "self-start": !stream.photo_url }
+]} data-id={stream.id}>
   {stream.photo_url && (
     <div class="mb-4 rounded-xl overflow-hidden relative">
       <img 
@@ -28,36 +31,36 @@ const vlcUrl = `vlc://${aceStreamBase}/ace/manifest.m3u8?id=${encodeURIComponent
     
     <div class="hidden">{stream.id}</div>
     
-    <div class="flex flex-wrap gap-2 justify-between">
+    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
       <div class="flex flex-wrap gap-2">
-        <a class="px-5 py-2 rounded-xl border border-sky-800/30 bg-sky-800/70 hover:bg-sky-700 text-white text-sm no-underline inline-flex items-center gap-1 font-medium shadow-sm transition-colors" href={watchUrl}>
+        <a class="flex-1 sm:flex-none px-4 sm:px-5 py-2 rounded-xl border border-sky-800/30 bg-sky-800/70 hover:bg-sky-700 text-white text-sm no-underline inline-flex items-center justify-center gap-1 font-medium shadow-sm transition-colors" href={watchUrl}>
           Watch
         </a>
         
         <button 
-          class="px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm inline-flex items-center gap-1.5 transition-colors hover:border-slate-600/40"
+          class="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm inline-flex items-center justify-center gap-1.5 transition-colors hover:border-slate-600/40"
           data-copy-link 
           title="Copy AceStream link"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0">
             <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
             <path d="m4 16c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2"/>
           </svg>
-          Copy Link
+          <span class="hidden xs:inline">Copy</span><span class="xs:hidden">Copy</span>
         </button>
         
         <a 
-          class="px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm inline-flex items-center gap-1.5 transition-colors hover:border-slate-600/40"
+          class="px-3 sm:px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm inline-flex items-center justify-center gap-1.5 transition-colors hover:border-slate-600/40"
           href={vlcUrl} 
           title="Open in VLC"
         >
           <Icon name="vlc" width="14" height="14" />
-          VLC
+          <span>VLC</span>
         </a>
       </div>
       
-      <div class="flex flex-wrap gap-2">
-        <button class="px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm transition-colors hover:border-slate-600/40" data-edit>
+      <div class="flex gap-2">
+        <button class="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm transition-colors hover:border-slate-600/40" data-edit>
           Edit
         </button>
         
