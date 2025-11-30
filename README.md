@@ -100,6 +100,7 @@ To use a different AceStream server or change the port, edit the `docker-compose
 
 ## 🗺️ Roadmap
 
+- [x] **HLS Video Player**: Integrated browser-based video player with real-time stats
 - [ ] **Docker Image**: Create and publish an official Docker image for easy deployment via CI/CD
 - [ ] **User Authentication**: Implement user accounts and authentication
 - [ ] **External Access URL**: Add a toggle for accessing streams via Tailscale or external IP
