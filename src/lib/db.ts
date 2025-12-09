@@ -1,16 +1,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import Database from 'better-sqlite3'
-import type { Database as DatabaseType } from 'better-sqlite3'
+import { Database } from 'bun:sqlite'
 
-let db: DatabaseType | null = null
+let db: Database | null = null
 
-function ensureDb(): DatabaseType {
+function ensureDb(): Database {
   if (db) return db
   const dbPath = process.env.DB_PATH || './data/db.sqlite'
   const dir = path.dirname(dbPath)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-  db = new Database(dbPath)
+  db = new Database(dbPath, { create: true })
   db.exec(`
     PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS streams (
