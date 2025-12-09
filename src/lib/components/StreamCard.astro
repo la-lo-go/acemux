@@ -12,6 +12,17 @@ const vlcUrl = `vlc://${aceStreamBase}/ace/manifest.m3u8?id=${encodeURIComponent
   "stream-card group relative overflow-hidden bg-[#111a24] border border-[#1f2a37]/70 rounded-2xl p-5 md:p-6 shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/40 transition-shadow",
   { "self-start": !stream.photo_url }
 ]} data-id={stream.id}>
+  <!-- Status indicator -->
+  <div class="absolute top-3 right-3 z-10" data-status-wrapper>
+    <div 
+      class="status-indicator w-3 h-3 rounded-full bg-slate-500/60 transition-all duration-500 cursor-help"
+      data-status="checking"
+      title="Checking status..."
+    >
+      <span class="absolute inset-0 rounded-full animate-ping-slow bg-slate-400/40"></span>
+    </div>
+  </div>
+
   {stream.photo_url && (
     <div class="mb-4 rounded-xl overflow-hidden relative">
       <img 
