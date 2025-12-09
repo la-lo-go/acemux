@@ -65,48 +65,86 @@ To preview the production build:
 bun run preview
 ```
 
-## 🐳 Docker Support
+## 🐳 Docker
 
-AceMux includes Docker configuration for easy deployment with AceStream Engine included.
+The easiest way to run AceMux is with Docker. The image is available on both Docker Hub and GitHub Container Registry.
 
-> [!WARNING] 
-> This is VERY beta and not recommended for production use yet.
+### Quick Start
 
-### Quick Start with Docker
+Create a `docker-compose.yml` file with the following content:
 
-1. **Start both services** (AceMux + AceStream Engine):
+```yaml
+services:
+  acestream:
+    image: ghcr.io/martinbjeldbak/acestream-http-proxy:latest
+    container_name: acestream
+    environment:
+      - ALLOW_REMOTE_ACCESS=true
+    ports:
+      - "6878:6878"
+    restart: unless-stopped
+
+  acemux:
+    image: ghcr.io/la-lo-go/acemux:latest
+    container_name: acemux
+    ports:
+      - "4321:4321"
+    environment:
+      - ACESTREAM_BASE=http://acestream:6878
+    volumes:
+      - acemux_data:/app/data
+    depends_on:
+      - acestream
+    restart: unless-stopped
+
+volumes:
+  acemux_data:
+```
+
+Start the stack:
 
 ```sh
 docker-compose up -d
 ```
 
-1. **Access the application** at `http://localhost:4321`
+Access the application at `http://localhost:4321`
 
-### Docker Environment Variables
+### Available Images
 
-You can configure the following environment variables in `docker-compose.yml`:
+| Registry | Image |
+|----------|-------|
+| GitHub Container Registry | `ghcr.io/la-lo-go/acemux:latest` |
+| Docker Hub | `lalogo/acemux:latest` |
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ACESTREAM_BASE` | `http://localhost:6878` | AceStream Engine URL |
+| `PORT` | `4321` | Application port |
+| `HOST` | `0.0.0.0` | Host binding |
+
+### Data Persistence
+
+The SQLite database is stored in `/app/data`. Mount a volume to persist your streams:
 
 ```yaml
-services:
-  acemux:
-    environment:
-      - ACESTREAM_BASE=http://acestream:6878  # AceStream Engine URL
-      - PORT=4321                              # Application port
-      - HOST=0.0.0.0                          # Host binding
+volumes:
+  - ./data:/app/data          # Bind mount
+  # or
+  - acemux_data:/app/data     # Named volume
 ```
-
-To use a different AceStream server or change the port, edit the `docker-compose.yml` file before running `docker-compose up`.
 
 
 ## 🗺️ Roadmap
 
 - [x] **HLS Video Player**: Integrated browser-based video player with real-time stats
-- [ ] **Docker Image**: Create and publish an official Docker image for easy deployment via CI/CD
+- [x] **Docker Image**: Official Docker images on Docker Hub and GitHub Container Registry
+- [x] **Stream Health Check**: Real-time status indicators showing stream availability
 - [ ] **User Authentication**: Implement user accounts and authentication
 - [ ] **External Access URL**: Add a toggle for accessing streams via Tailscale or external IP
 - [ ] **Search & Filter**: Add search functionality to quickly find streams
 - [ ] **Import/Export**: Backup and restore your stream library
-- [ ] **Stream Health Check**: Verify if streams are active/working
 - [ ] **Categories/Tags**: Organize streams by sport, league, or custom tags
 - [ ] **Favorites**: Mark streams as favorites for quick access
 - [ ] **Sort Options**: Sort by name, date added, or custom order
