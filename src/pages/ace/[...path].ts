@@ -6,8 +6,8 @@ export const ALL: APIRoute = async ({ request, params }) => {
   const rest = String(params.path || '')
   const target = `${base}/ace/${rest}${url.search}`
 
-  console.log('[AceStream Proxy] Request:', request.method, rest, url.search)
-  console.log('[AceStream Proxy] Target:', target)
+  //console.log('[AceStream Proxy] Request:', request.method, rest, url.search)
+  //console.log('[AceStream Proxy] Target:', target)
 
   const init: RequestInit = {
     method: request.method,

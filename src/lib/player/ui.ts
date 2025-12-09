@@ -136,13 +136,10 @@ export function showRetrying(
 }
 
 /**
- * Hide the loading overlay and show stats bar
+ * Hide the loading overlay
  */
-export function hideOverlay(elements: Pick<PlayerElements, 'overlay' | 'statsBar'>): void {
-  console.log('hideOverlay called - showing statsBar')
+export function hideOverlay(elements: Pick<PlayerElements, 'overlay'>): void {
   elements.overlay.classList.add('hidden')
-  elements.statsBar.classList.remove('hidden')
-  console.log('statsBar hidden class removed, classList:', elements.statsBar.classList.toString())
 }
 
 /**
@@ -156,7 +153,6 @@ export function showUnmuteBanner(unmuteBanner: HTMLElement): void {
  * Update stream statistics display
  */
 export function updateStats(stats: StreamStats): void {
-  console.log('updateStats called with:', stats)
   const statPeers = document.getElementById('statPeers')
   const statDown = document.getElementById('statDown')
   const statUp = document.getElementById('statUp')

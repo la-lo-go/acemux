@@ -32,7 +32,7 @@ export async function fetchStreamInfo(jsonSrc: string, hlsSrc: string): Promise<
   statUrl: string | null
 }> {
   try {
-    console.log('Fetching stream info from:', jsonSrc)
+    //console.log('Fetching stream info from:', jsonSrc)
     const response = await fetch(jsonSrc)
     
     if (!response.ok) {
@@ -41,7 +41,7 @@ export async function fetchStreamInfo(jsonSrc: string, hlsSrc: string): Promise<
     }
 
     const data: AceStreamJsonResponse = await response.json()
-    console.log('Stream info response:', data)
+    //console.log('Stream info response:', data)
 
     if (data.error) {
       throw new Error(data.error)
@@ -55,10 +55,10 @@ export async function fetchStreamInfo(jsonSrc: string, hlsSrc: string): Promise<
       data.response?.stat_url || data.stat_url
     ) || null
 
-    console.log('Processed URLs - playbackUrl:', playbackUrl, 'statUrl:', statUrl)
+    //console.log('Processed URLs - playbackUrl:', playbackUrl, 'statUrl:', statUrl)
     return { playbackUrl, statUrl }
   } catch (error) {
-    console.log('JSON format not available, using direct HLS:', error)
+    //console.log('JSON format not available, using direct HLS:', error)
     return { playbackUrl: hlsSrc, statUrl: null }
   }
 }
