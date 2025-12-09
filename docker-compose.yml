@@ -16,6 +16,14 @@ services:
       - ACESTREAM_BASE=http://acestream:6878
       - PORT=4321
       - HOST=0.0.0.0
+    volumes:
+      - ./data:/app/data
     depends_on:
       - acestream
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:4321').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
