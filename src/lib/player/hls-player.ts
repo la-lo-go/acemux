@@ -1,8 +1,9 @@
 /**
- * HLS.js player wrapper
+ * HLS Video Element player wrapper
+ * Uses hls-video-element custom element for HLS playback
  */
 
-import type { PlayerElements, PlayerConfig, StreamStats } from './types'
+import type { PlayerElements, PlayerConfig, StreamStats, HlsVideoElement } from './types'
 import { DEFAULT_PLAYER_CONFIG } from './types'
 import { 
   updateStatus, 
@@ -17,18 +18,12 @@ import {
   clearErrorLog
 } from './ui'
 import { buildStreamUrls, fetchStreamInfo, fetchStats } from './acestream'
-
-declare global {
-  interface Window {
-    Hls: any
-  }
-}
+import { Hls } from 'hls-video-element'
 
 export class AceStreamPlayer {
   private elements: PlayerElements
   private config: PlayerConfig
   private streamId: string
-  private hls: any = null
   private statUrl: string | null = null
   private playbackUrl: string = ''
   private statsInterval: ReturnType<typeof setInterval> | null = null
@@ -43,6 +38,10 @@ export class AceStreamPlayer {
     this.config = { ...DEFAULT_PLAYER_CONFIG, ...config }
     
     this.setupEventListeners()
+  }
+
+  private get hlsVideo(): HlsVideoElement {
+    return this.elements.video as HlsVideoElement
   }
 
   private setupEventListeners(): void {
@@ -66,7 +65,7 @@ export class AceStreamPlayer {
   }
 
   async init(): Promise<void> {
-    const { video, overlay } = this.elements
+    const { overlay } = this.elements
     const { jsonSrc, hlsSrc } = buildStreamUrls(this.streamId)
 
     updateStatus(this.elements, 'Connecting to AceStream...', 'Requesting stream manifest', 10)
@@ -80,14 +79,7 @@ export class AceStreamPlayer {
 
       updateStatus(this.elements, 'Prebuffering...', 'AceStream is loading the content', 40)
 
-      if (this.supportsNativeHls()) {
-        this.initNativeHls()
-      } else if (this.supportsHlsJs()) {
-        this.initHlsJs()
-      } else {
-        showError(overlay, 'Browser Not Supported', 
-          'Your browser does not support HLS playback. Please use a modern browser like Chrome, Firefox, Safari, or Edge.')
-      }
+      this.initHlsVideo()
     } catch (error) {
       console.error('Stream initialization error:', error)
       showError(overlay, 'Connection Error',
@@ -96,66 +88,28 @@ export class AceStreamPlayer {
     }
   }
 
-  private supportsNativeHls(): boolean {
-    return !!this.elements.video.canPlayType('application/vnd.apple.mpegurl')
-  }
-
-  private supportsHlsJs(): boolean {
-    return window.Hls && window.Hls.isSupported()
-  }
-
-  private initNativeHls(): void {
-    const { video, overlay, unmuteBanner } = this.elements
-
-    video.src = this.playbackUrl
-
-    video.addEventListener('loadedmetadata', () => {
-      this.tryPlay()
-    })
-
-    video.addEventListener('playing', () => {
-      console.log('Video playing event fired (native HLS)')
-      hideOverlay(this.elements)
-      if (video.muted) {
-        showUnmuteBanner(unmuteBanner)
-      }
-      this.startStatsPolling()
-    })
-
-    video.addEventListener('error', () => {
-      showError(overlay, 'Playback Error', 'Failed to load the stream', 
-        video.error?.message || 'Unknown error')
-    })
-  }
-
-  private initHlsJs(): void {
+  private initHlsVideo(): void {
     const { video, overlay, unmuteBanner, statsBar } = this.elements
-    const Hls = window.Hls
+    const hlsVideo = this.hlsVideo
 
-    this.hls = new Hls(this.config.hlsConfig)
-    this.hls.loadSource(this.playbackUrl)
-    this.hls.attachMedia(video)
+    // Configure hls.js options via the config property
+    hlsVideo.config = this.config.hlsConfig
 
-    this.hls.on(Hls.Events.MANIFEST_LOADING, () => {
-      updateStatus(this.elements, 'Loading manifest...', 'Fetching stream information', 50)
-    })
+    // Set the source - hls-video-element handles both native HLS and hls.js
+    hlsVideo.src = this.playbackUrl
 
-    this.hls.on(Hls.Events.MANIFEST_PARSED, (_event: any, data: any) => {
-      updateStatus(this.elements, 'Starting playback...', `Found ${data.levels.length} quality level(s)`, 80)
+    // Wait for the hls.js API to be available and set up event handlers
+    this.setupHlsEventHandlers()
+
+    // Standard video events work on hls-video-element
+    video.addEventListener('loadedmetadata', () => {
+      updateStatus(this.elements, 'Starting playback...', 'Stream loaded', 80)
       this.tryPlay()
     })
 
-    this.hls.on(Hls.Events.FRAG_LOADED, () => {
-      if (!this.elements.overlay.classList.contains('hidden')) {
-        updateStatus(this.elements, 'Buffering...', 'Loading video segments', 90)
-      }
-    })
-
     video.addEventListener('playing', () => {
-      console.log('Video playing event fired (HLS.js)')
       // Reset error counters on successful playback
       if (this.retryCount > 0 || this.nonFatalErrorCount > 0) {
-        console.log('Playback recovered, resetting error counters')
         this.retryCount = 0
         this.nonFatalErrorCount = 0
         clearErrorLog(this.elements, this.config.maxNonFatalErrors)
@@ -174,23 +128,61 @@ export class AceStreamPlayer {
       }
     })
 
-    this.hls.on(Hls.Events.ERROR, (_event: any, data: any) => {
+    video.addEventListener('error', () => {
+      if (this.hasReachedMaxRetries) return
+      
+      const errorMessage = video.error?.message || 'Unknown playback error'
+      console.error('Video Error:', errorMessage)
+      showError(overlay, 'Playback Error', 'Failed to load the stream', errorMessage)
+    })
+  }
+
+  private setupHlsEventHandlers(): void {
+    const hlsVideo = this.hlsVideo
+
+    // Poll for api availability since it's set asynchronously
+    const checkApi = () => {
+      if (hlsVideo.api) {
+        this.attachHlsEvents(hlsVideo.api)
+      } else {
+        // Check again after a short delay
+        setTimeout(checkApi, 50)
+      }
+    }
+    checkApi()
+  }
+
+  private attachHlsEvents(hls: typeof Hls.prototype): void {
+    hls.on(Hls.Events.MANIFEST_LOADING, () => {
+      updateStatus(this.elements, 'Loading manifest...', 'Fetching stream information', 50)
+    })
+
+    hls.on(Hls.Events.MANIFEST_PARSED, (_event: string, data: any) => {
+      updateStatus(this.elements, 'Starting playback...', `Found ${data.levels.length} quality level(s)`, 80)
+    })
+
+    hls.on(Hls.Events.FRAG_LOADED, () => {
+      if (!this.elements.overlay.classList.contains('hidden')) {
+        updateStatus(this.elements, 'Buffering...', 'Loading video segments', 90)
+      }
+    })
+
+    hls.on(Hls.Events.ERROR, (_event: string, data: any) => {
       console.error('HLS Error:', data)
       
       // Don't process errors if we've already reached max retries
       if (this.hasReachedMaxRetries) return
 
       if (data.fatal) {
-        this.handleFatalError(data)
+        this.handleFatalError(data, hls)
       } else {
         this.handleNonFatalError(data)
       }
     })
   }
 
-  private handleFatalError(data: any): void {
+  private handleFatalError(data: any, hls: typeof Hls.prototype): void {
     const { overlay } = this.elements
-    const Hls = window.Hls
     const { maxRetries } = this.config
 
     this.retryCount++
@@ -217,15 +209,15 @@ export class AceStreamPlayer {
       case Hls.ErrorTypes.NETWORK_ERROR:
         showRetrying(overlay, 'Network Error', data.details || 'Connection lost', this.retryCount - 1, maxRetries)
         this.retryTimeout = setTimeout(() => {
-          if (!this.hasReachedMaxRetries && this.hls) {
-            this.hls.loadSource(this.playbackUrl)
+          if (!this.hasReachedMaxRetries && hls) {
+            hls.loadSource(this.playbackUrl)
           }
         }, 2000 * this.retryCount)
         break
 
       case Hls.ErrorTypes.MEDIA_ERROR:
         showRetrying(overlay, 'Media Error', data.details || 'Playback issue detected', this.retryCount - 1, maxRetries)
-        this.hls.recoverMediaError()
+        hls.recoverMediaError()
         break
 
       default:
@@ -265,9 +257,11 @@ export class AceStreamPlayer {
       clearInterval(this.statsInterval)
       this.statsInterval = null
     }
-    if (this.hls) {
-      this.hls.destroy()
-      this.hls = null
+
+    // The hls-video-element handles cleanup internally when src is removed or element is disconnected
+    const hlsVideo = this.hlsVideo
+    if (hlsVideo.api) {
+      hlsVideo.api.destroy()
     }
 
     // Hide unmute banner and error log
@@ -283,17 +277,13 @@ export class AceStreamPlayer {
   private tryPlay(): void {
     this.elements.video.play().catch(() => {
       // Autoplay was prevented, user needs to click play
-      console.log('Autoplay prevented, waiting for user interaction')
     })
   }
 
   private startStatsPolling(): void {
     if (!this.statUrl) {
-      console.log('Stats polling disabled: no statUrl available')
       return
     }
-
-    console.log('Starting stats polling with URL:', this.statUrl)
     
     // Fetch immediately
     this.pollStats()
@@ -307,7 +297,6 @@ export class AceStreamPlayer {
     
     const stats = await fetchStats(this.statUrl)
     if (stats) {
-      console.log('Stats received:', stats)
       updateStats(stats as StreamStats)
     }
   }
@@ -321,9 +310,11 @@ export class AceStreamPlayer {
       clearInterval(this.statsInterval)
       this.statsInterval = null
     }
-    if (this.hls) {
-      this.hls.destroy()
-      this.hls = null
+    
+    // The hls-video-element handles cleanup internally
+    const hlsVideo = this.hlsVideo
+    if (hlsVideo.api) {
+      hlsVideo.api.destroy()
     }
   }
 }

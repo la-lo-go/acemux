@@ -2,6 +2,8 @@
  * Player-related type definitions
  */
 
+import type Hls from 'hls.js'
+
 export interface StreamStats {
   peers?: number
   speed_down?: number
@@ -24,8 +26,18 @@ export interface AceStreamJsonResponse {
   error?: string
 }
 
+/**
+ * HLS Video Element interface - extends HTMLVideoElement with hls.js API access
+ */
+export interface HlsVideoElement extends HTMLVideoElement {
+  /** The hls.js instance when using hls.js (null for native HLS) */
+  api: Hls | null
+  /** Configuration object for hls.js */
+  config: Partial<HlsConfig> | null
+}
+
 export interface PlayerElements {
-  video: HTMLVideoElement
+  video: HTMLVideoElement | HlsVideoElement
   overlay: HTMLElement
   statusText: HTMLElement
   statusDetail: HTMLElement

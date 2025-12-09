@@ -22,7 +22,6 @@ const vlcUrl = `vlc://${aceStreamBase}/ace/manifest.m3u8?id=${encodeURIComponent
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title} · AceMux</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>" />
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script define:vars={{ aceStreamBase: import.meta.env.ACESTREAM_BASE || 'http://acestream:6878', streamId: id }}>
       window.aceStreamBase = aceStreamBase.replace(/\/+$/, '');
       window.streamId = streamId;
@@ -68,7 +67,7 @@ const vlcUrl = `vlc://${aceStreamBase}/ace/manifest.m3u8?id=${encodeURIComponent
         
         if (copyBtn) {
           copyBtn.addEventListener('click', async () => {
-            const aceStreamUrl = `/ace/manifest.m3u8?id=${encodeURIComponent(window.streamId)}`;
+            const aceStreamUrl = `/ace/manifest.m3u8?id=${encodeURIComponent((window as any).streamId)}`;
             const fullUrl = window.aceStreamBase + aceStreamUrl;
             
             try {
@@ -91,7 +90,7 @@ const vlcUrl = `vlc://${aceStreamBase}/ace/manifest.m3u8?id=${encodeURIComponent
           });
         }
         
-        function showCopyFeedback(btn) {
+        function showCopyFeedback(btn: HTMLElement) {
           const originalContent = btn.innerHTML;
           btn.innerHTML = `
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
