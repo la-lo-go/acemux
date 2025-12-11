@@ -18,7 +18,8 @@ if getent group "$PGID" >/dev/null 2>&1; then
     echo "Group with GID $PGID already exists"
 else
     echo "Creating group with GID $PGID"
-    addgroup -g "$PGID" appgroup || {
+    # Use dynamic name to avoid conflicts with existing names
+    addgroup -g "$PGID" "acemux$PGID" || {
         echo "ERROR: Failed to create group with GID $PGID"
         exit 1
     }
@@ -36,7 +37,8 @@ if getent passwd "$PUID" >/dev/null 2>&1; then
     echo "User with UID $PUID already exists"
 else
     echo "Creating user with UID $PUID"
-    adduser -D -u "$PUID" -G "$GROUP_NAME" appuser || {
+    # Use dynamic name to avoid conflicts with existing names
+    adduser -D -u "$PUID" -G "$GROUP_NAME" "acemux$PUID" || {
         echo "ERROR: Failed to create user with UID $PUID"
         exit 1
     }
@@ -52,7 +54,15 @@ fi
 # Ensure data directory exists and has correct permissions
 echo "Setting up data directory permissions"
 mkdir -p /app/data
-chown -R "$PUID:$PGID" /app/data
+
+# Only change ownership if needed (optimization for large directories)
+CURRENT_OWNER=$(stat -c '%u:%g' /app/data 2>/dev/null || echo "")
+if [ "$CURRENT_OWNER" != "$PUID:$PGID" ]; then
+    echo "Changing ownership of /app/data to $PUID:$PGID"
+    chown -R "$PUID:$PGID" /app/data
+else
+    echo "Ownership already correct for /app/data"
+fi
 
 # Execute the application as the specified user
 # Use the username to avoid any potential issues with numeric UID syntax
