@@ -17,7 +17,8 @@ fi
 if ! getent group "$PGID" >/dev/null 2>&1; then
     echo "Creating group with GID $PGID"
     if ! addgroup -g "$PGID" appgroup 2>/dev/null; then
-        echo "WARNING: Could not create group with GID $PGID, it may already exist"
+        echo "WARNING: Could not create group with GID $PGID"
+        # Continue anyway - the group might already exist or we'll fail later with better error
     fi
 fi
 
@@ -32,7 +33,8 @@ fi
 if ! getent passwd "$PUID" >/dev/null 2>&1; then
     echo "Creating user with UID $PUID"
     if ! adduser -D -u "$PUID" -G "$GROUP_NAME" appuser 2>/dev/null; then
-        echo "WARNING: Could not create user with UID $PUID, it may already exist"
+        echo "WARNING: Could not create user with UID $PUID"
+        # Continue anyway - the user might already exist or we'll fail later with better error
     fi
 fi
 
