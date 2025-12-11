@@ -15,9 +15,6 @@ RUN bun run build
 FROM oven/bun:1-alpine AS runtime
 WORKDIR /app
 
-# Install su-exec for user switching
-RUN apk add --no-cache su-exec
-
 # Only copy the built standalone server (no node_modules needed!)
 COPY --from=builder /app/dist ./dist
 
