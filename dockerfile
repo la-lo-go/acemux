@@ -18,10 +18,12 @@ WORKDIR /app
 # Only copy the built standalone server (no node_modules needed!)
 COPY --from=builder /app/dist ./dist
 
-# Run as non-root user
-USER bun
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 ENV HOST=0.0.0.0
 ENV PORT=4321
 EXPOSE 4321/tcp
 
-ENTRYPOINT [ "bun", "./dist/server/entry.mjs" ]
+ENTRYPOINT [ "docker-entrypoint.sh" ]

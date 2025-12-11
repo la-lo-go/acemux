@@ -123,6 +123,8 @@ Access the application at `http://localhost:4321`
 | `ACESTREAM_BASE` | `http://localhost:6878` | AceStream Engine URL |
 | `PORT` | `4321` | Application port |
 | `HOST` | `0.0.0.0` | Host binding |
+| `PUID` | `1000` | User ID for file permissions |
+| `PGID` | `1000` | Group ID for file permissions |
 
 ### Data Persistence
 
@@ -133,6 +135,14 @@ volumes:
   - ./data:/app/data          # Bind mount
   # or
   - acemux_data:/app/data     # Named volume
+```
+
+**Note**: When using bind mounts with custom user/group IDs on your host, set the `PUID` and `PGID` environment variables to match your host user to avoid permission issues:
+
+```yaml
+environment:
+  - PUID=1000
+  - PGID=1002
 ```
 
 

@@ -16,6 +16,9 @@ services:
       - ACESTREAM_BASE=http://acestream:6878
       - PORT=4321
       - HOST=0.0.0.0
+      # Uncomment to set custom user/group IDs for file permissions
+      # - PUID=1000
+      # - PGID=1000
     volumes:
       - ./data:/app/data
     depends_on:
