@@ -40,6 +40,19 @@ const hasStreams = streams.length > 0
 
       <StreamForm hasStreams={hasStreams} />
 
+      {hasStreams && (
+        <div class="flex gap-3 flex-wrap items-center mb-5">
+          <select id="sortSelect"
+            class="px-3 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] text-sm">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="name-asc">Name A → Z</option>
+            <option value="name-desc">Name Z → A</option>
+            <option value="favorites">Favorites first</option>
+          </select>
+        </div>
+      )}
+
       <div id="list" class="grid gap-5 animate-slideUp md:grid-cols-2 items-start">
         {!hasStreams && <p class="opacity-80 text-xs italic text-center py-6 md:col-span-2">No streams yet. Add the first one above.</p>}
         {streams.map((s: Stream) => (

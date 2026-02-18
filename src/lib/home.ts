@@ -388,6 +388,36 @@ async function handleFavoriteToggle(streamId: string | null, card: HTMLElement):
   card.dataset.favorite = isFav ? '1' : '0';
   const btn = card.querySelector('[data-favorite-btn]');
   if (btn) btn.textContent = isFav ? '★' : '☆';
+  sortCards();
+}
+
+function sortCards(): void {
+  const select = document.getElementById('sortSelect') as HTMLSelectElement | null;
+  if (!select) return;
+  const list = document.getElementById('list');
+  if (!list) return;
+  const cards = Array.from(list.querySelectorAll<HTMLElement>('.stream-card'));
+  const val = select.value;
+
+  cards.sort((a, b) => {
+    if (val === 'favorites') {
+      const fa = a.dataset.favorite === '1' ? 0 : 1;
+      const fb = b.dataset.favorite === '1' ? 0 : 1;
+      if (fa !== fb) return fa - fb;
+    }
+    if (val === 'name-asc')  return (a.dataset.name ?? '').localeCompare(b.dataset.name ?? '');
+    if (val === 'name-desc') return (b.dataset.name ?? '').localeCompare(a.dataset.name ?? '');
+    if (val === 'oldest')    return (a.dataset.created ?? '').localeCompare(b.dataset.created ?? '');
+    return (b.dataset.created ?? '').localeCompare(a.dataset.created ?? '');
+  });
+
+  cards.forEach(card => list.appendChild(card));
+}
+
+function initSort(): void {
+  const select = document.getElementById('sortSelect');
+  if (!select) return;
+  select.addEventListener('change', sortCards);
 }
 
 /**
@@ -398,4 +428,6 @@ export function initHomePage(): void {
   initCreateFormSubmit();
   initStreamStatusChecks();
   initCardActions();
+  initSearch();
+  initSort();
 }
