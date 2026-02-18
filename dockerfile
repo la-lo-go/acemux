@@ -18,10 +18,16 @@ WORKDIR /app
 # Only copy the built standalone server (no node_modules needed!)
 COPY --from=builder /app/dist ./dist
 
-# Run as non-root user
-USER bun
+# Install su-exec for privilege dropping
+RUN apk add --no-cache su-exec
+
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Note: No USER bun here - entrypoint handles privilege dropping after fixing permissions
 ENV HOST=0.0.0.0
 ENV PORT=4321
 EXPOSE 4321/tcp
 
-ENTRYPOINT [ "bun", "./dist/server/entry.mjs" ]
+ENTRYPOINT ["/entrypoint.sh"]
