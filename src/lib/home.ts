@@ -390,6 +390,22 @@ async function handleFavoriteToggle(streamId: string | null, card: HTMLElement):
   if (btn) btn.textContent = isFav ? '★' : '☆';
 }
 
+function initSearch(): void {
+  const input = document.getElementById('searchInput') as HTMLInputElement | null;
+  if (!input) return;
+  input.addEventListener('input', () => {
+    const q = input.value.toLowerCase().trim();
+    let visible = 0;
+    document.querySelectorAll<HTMLElement>('.stream-card').forEach(card => {
+      const match = !q || (card.dataset.name ?? '').includes(q);
+      card.classList.toggle('hidden', !match);
+      if (match) visible++;
+    });
+    const noResults = document.getElementById('noResults');
+    if (noResults) noResults.classList.toggle('hidden', visible > 0);
+  });
+}
+
 /**
  * Initialize all home page functionality
  */
@@ -398,4 +414,5 @@ export function initHomePage(): void {
   initCreateFormSubmit();
   initStreamStatusChecks();
   initCardActions();
+  initSearch();
 }
