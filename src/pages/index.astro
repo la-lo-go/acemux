@@ -44,6 +44,14 @@ const hasStreams = streams.length > 0
         <div class="flex gap-3 flex-wrap items-center mb-5">
           <input id="searchInput" type="search" placeholder="Search streams…"
             class="flex-1 min-w-[160px] px-4 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] text-sm outline-none focus:border-slate-500" />
+          <select id="sortSelect"
+            class="px-3 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] text-sm">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="name-asc">Name A → Z</option>
+            <option value="name-desc">Name Z → A</option>
+            <option value="favorites">Favorites first</option>
+          </select>
         </div>
       )}
 
