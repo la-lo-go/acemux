@@ -25,6 +25,9 @@ function ensureDb(): Database {
       UPDATE streams SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
   `)
+  try {
+    db.exec('ALTER TABLE streams ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0')
+  } catch { /* column already exists — safe to ignore */ }
   return db
 }
 
@@ -32,20 +35,29 @@ export type Stream = {
   id: string
   name: string
   photo_url?: string | null
+  is_favorite: number   // 0 | 1
   created_at: string
   updated_at: string
 }
 
 export function getAllStreams(): Stream[] {
   return ensureDb().prepare(
-    'SELECT id,name,photo_url,created_at,updated_at FROM streams ORDER BY created_at DESC'
+    'SELECT id,name,photo_url,is_favorite,created_at,updated_at FROM streams ORDER BY created_at DESC'
   ).all() as Stream[]
 }
 
 export function getStream(id: string): Stream | undefined {
   return ensureDb().prepare(
-    'SELECT id,name,photo_url,created_at,updated_at FROM streams WHERE id = ?'
+    'SELECT id,name,photo_url,is_favorite,created_at,updated_at FROM streams WHERE id = ?'
   ).get(id) as Stream | undefined
+}
+
+export function toggleFavorite(id: string): Stream | null {
+  const current = getStream(id)
+  if (!current) return null
+  const next = current.is_favorite ? 0 : 1
+  ensureDb().prepare('UPDATE streams SET is_favorite = ? WHERE id = ?').run(next, id)
+  return getStream(id)!
 }
 
 export function createStream(input: { id: string; name: string; photo_url?: string | null }): Stream {

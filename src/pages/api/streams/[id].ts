@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro'
-import { getStream, updateStream, deleteStream } from '../../../lib/db'
+import { getStream, updateStream, deleteStream, toggleFavorite } from '../../../lib/db'
 
 export const GET: APIRoute = ({ params }) => {
   const id = String(params.id || '')
@@ -15,6 +15,13 @@ export const PUT: APIRoute = async ({ params, request }) => {
     name: body?.name,
     photo_url: body?.photo_url ?? null
   })
+  if (!s) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'content-type': 'application/json' } })
+  return new Response(JSON.stringify(s), { headers: { 'content-type': 'application/json' } })
+}
+
+export const PATCH: APIRoute = ({ params }) => {
+  const id = String(params.id || '')
+  const s = toggleFavorite(id)
   if (!s) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'content-type': 'application/json' } })
   return new Response(JSON.stringify(s), { headers: { 'content-type': 'application/json' } })
 }

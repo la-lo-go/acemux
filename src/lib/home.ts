@@ -286,6 +286,8 @@ function initCardActions(): void {
       await handleDelete(streamId);
     } else if (target.matches('[data-copy-link]')) {
       await handleCopyLink(streamId, target);
+    } else if (target.matches('[data-favorite-btn]')) {
+      await handleFavoriteToggle(streamId, card as HTMLElement);
     }
   });
 }
@@ -375,6 +377,17 @@ async function handleCopyLink(streamId: string | null, target: Element): Promise
     }
     document.body.removeChild(textArea);
   }
+}
+
+async function handleFavoriteToggle(streamId: string | null, card: HTMLElement): Promise<void> {
+  if (!streamId) return;
+  const res = await fetch(`/api/streams/${streamId}`, { method: 'PATCH' });
+  if (!res.ok) return;
+  const updated = await res.json();
+  const isFav = updated.is_favorite === 1;
+  card.dataset.favorite = isFav ? '1' : '0';
+  const btn = card.querySelector('[data-favorite-btn]');
+  if (btn) btn.textContent = isFav ? '★' : '☆';
 }
 
 /**
