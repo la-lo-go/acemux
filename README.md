@@ -143,13 +143,13 @@ volumes:
 - [x] **Stream Health Check**: Real-time status indicators showing stream availability
 - [ ] **User Authentication**: Implement user accounts and authentication
 - [ ] **External Access URL**: Add a toggle for accessing streams via Tailscale or external IP
-- [ ] **Search & Filter**: Add search functionality to quickly find streams
-- [ ] **Import/Export**: Backup and restore your stream library
+- [x] **Search & Filter**: Add search functionality to quickly find streams
+- [x] **Import/Export**: Backup and restore your stream library
 - [ ] **Categories/Tags**: Organize streams by sport, league, or custom tags
-- [ ] **Favorites**: Mark streams as favorites for quick access
-- [ ] **Sort Options**: Sort by name, date added, or custom order
-- [ ] **Bulk Actions**: Delete or edit multiple streams at once
-- [ ] **Grid/List View**: Toggle between different layout modes
+- [x] **Favorites**: Mark streams as favorites for quick access
+- [x] **Sort Options**: Sort by name, date added, or custom order
+- [x] **Bulk Actions**: Delete or edit multiple streams at once
+- [x] **Grid/List View**: Toggle between different layout modes
 - [ ] **Progressive Web App**: Install as desktop/mobile app
 
 ## 📁 Project Structure
