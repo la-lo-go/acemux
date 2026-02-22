@@ -25,6 +25,12 @@ const hasStreams = streams.length > 0
     <title>AceMux - Stream Manager</title>
     <meta name="description" content="AceMux - A simple and elegant stream manager" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>" />
+    <meta name="theme-color" content="#0a0d12" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AceMux" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <script define:vars={{ aceStreamBase: import.meta.env.ACESTREAM_BASE || 'http://acestream:6878' }}>
       window.aceStreamBase = aceStreamBase.replace(/\/+$/, '');
     </script>
@@ -67,6 +73,11 @@ const hasStreams = streams.length > 0
     <script>
       import { initHomePage } from '../lib/home';
       document.addEventListener('DOMContentLoaded', initHomePage);
+    </script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js');
+      }
     </script>
   </body>
 </html>
