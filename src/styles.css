@@ -131,6 +131,35 @@ input:focus, button:focus {
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4);
 }
 
+/* Card selected state (bulk select mode) */
+.stream-card.card-selected {
+  border-color: rgba(56, 189, 248, 0.55) !important;
+  background-color: rgba(12, 74, 110, 0.18);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.22), 0 20px 25px -5px rgba(0,0,0,0.4);
+}
+
+/* Select mode: cards become clickable targets */
+#list.select-mode .stream-card { cursor: pointer; }
+
+/* Stream table (list view) */
+#streamTable { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+#streamTable thead tr { background-color: rgba(10, 16, 24, 0.7); }
+#streamTable tbody tr { border-top: 1px solid rgba(30, 42, 55, 0.5); transition: background-color 0.12s; }
+#streamTable tbody tr:hover { background-color: #0f1821; }
+.tbl-btn {
+  padding: 0.2rem 0.55rem; border-radius: 0.5rem; border: 1px solid rgba(51,65,85,0.45);
+  background: #111a24; font-size: 0.75rem; cursor: pointer; color: inherit;
+  transition: background-color 0.12s; text-decoration: none; display: inline-flex;
+  align-items: center; white-space: nowrap;
+}
+.tbl-btn:hover { background: #162635; }
+.tbl-btn-watch { border-color: rgba(7,89,133,0.35); background: rgba(7,89,133,0.75); color: white; font-weight: 500; }
+.tbl-btn-watch:hover { background: rgba(3,105,161,0.9); }
+.tbl-btn-del { border-color: rgba(127,29,29,0.6); background: #2a1618; color: rgba(253,164,175,0.9); }
+.tbl-btn-del:hover { background: #351a1c; }
+.tbl-btn-fav { opacity: 0.45; }
+.tbl-btn-fav:hover, .tbl-btn-fav.is-fav { opacity: 1; }
+
 /* HLS Video Element - ensure it fills container */
 hls-video {
   display: block;

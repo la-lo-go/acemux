@@ -39,9 +39,23 @@ const hasStreams = streams.length > 0
     <div class="relative mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 max-w-[1000px] xl:max-w-[1040px] 2xl:max-w-[1080px] transition-[max-width] duration-300">
       <div class="flex items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8 flex-wrap">
         <h1 class="m-0 text-2xl sm:text-[32px] font-bold tracking-tight text-sky-300 drop-shadow-sm">AceMux</h1>
-        {hasStreams && (
-          <button id="showCreate" class="px-5 py-2.5 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm font-medium shadow-md">+ Add Stream</button>
-        )}
+        <div class="flex items-center gap-2">
+          <!-- Split button: + Add Stream | ▾ (dropdown with Import) -->
+          <div class="flex relative">
+            <button id="showCreate" class="px-5 py-2.5 rounded-l-xl border border-r-0 border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm font-medium shadow-md">
+              + Add Stream
+            </button>
+            <button id="addMenuToggle" class="px-2.5 py-2.5 rounded-r-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors shadow-md" title="More options">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <div id="addMenu" class="hidden absolute right-0 top-full mt-1 z-50 bg-[#111a24] border border-slate-700/50 rounded-xl shadow-xl overflow-hidden min-w-[160px]">
+              <button id="importBtn" class="w-full text-left px-4 py-2.5 hover:bg-[#162a3d] transition-colors text-sm whitespace-nowrap">
+                Import from JSON
+              </button>
+            </div>
+          </div>
+          <input id="importFile" type="file" accept=".json" class="hidden" />
+        </div>
       </div>
 
       <StreamForm hasStreams={hasStreams} />
@@ -58,6 +72,24 @@ const hasStreams = streams.length > 0
             <option value="name-desc">Name Z → A</option>
             <option value="favorites">Favorites first</option>
           </select>
+          <button id="viewToggle" title="Switch to list view"
+            class="px-3 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm flex items-center">
+            <span data-grid-icon>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/>
+                <rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>
+              </svg>
+            </span>
+            <span data-list-icon class="hidden">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </span>
+          </button>
+          <button id="exportBtn" title="Export streams to JSON"
+            class="px-3 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm">Export</button>
+          <button id="bulkBtn"
+            class="px-3 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm">Select</button>
         </div>
       )}
 
@@ -67,6 +99,15 @@ const hasStreams = streams.length > 0
         {streams.map((s: Stream) => (
           <StreamCard stream={s} />
         ))}
+      </div>
+    </div>
+
+    <!-- Bulk action bar (fixed bottom, shown in select mode) -->
+    <div id="bulkBar" class="hidden fixed bottom-0 left-0 right-0 z-50 bg-[#111a24] border-t border-slate-700/50 px-4 py-3 flex items-center justify-between gap-4 shadow-xl">
+      <span id="bulkCount" class="text-sm text-slate-300">0 selected</span>
+      <div class="flex gap-2">
+        <button id="bulkDelete" class="px-4 py-2 rounded-xl border border-[#7f1d1d]/60 bg-[#2a1618] hover:bg-[#351a1c] transition-colors text-rose-200/90 hover:text-rose-200 text-sm font-medium">Delete selected</button>
+        <button id="bulkCancel" class="px-4 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm font-medium">Cancel</button>
       </div>
     </div>
 
