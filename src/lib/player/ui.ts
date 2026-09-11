@@ -158,13 +158,6 @@ export function updateStats(stats: StreamStats): void {
   const statUp = document.getElementById('statUp')
   const statStatus = document.getElementById('statStatus')
 
-  console.log('Stats elements found:', {
-    statPeers: !!statPeers,
-    statDown: !!statDown,
-    statUp: !!statUp,
-    statStatus: !!statStatus
-  })
-
   if (statPeers) statPeers.textContent = String(stats.peers ?? '-')
   if (statDown) statDown.textContent = String(stats.speed_down ?? '-')
   if (statUp) statUp.textContent = String(stats.speed_up ?? '-')

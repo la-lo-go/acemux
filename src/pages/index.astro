@@ -2,6 +2,7 @@
 import { getAllStreams, type Stream } from '../lib/db'
 import StreamForm from '../lib/components/StreamForm.astro'
 import StreamCard from '../lib/components/StreamCard.astro'
+import StreamRow from '../lib/components/StreamRow.astro'
 import '../styles.css'
 
 // Server-side data fetching for SSR
@@ -16,6 +17,28 @@ try {
   streams = []
 }
 const hasStreams = streams.length > 0
+const integrationBase = (process.env.PUBLIC_URL || Astro.url.origin).replace(/\/+$/, '')
+const tokenSuffix = process.env.API_TOKEN ? '?token=…' : ''
+const tokenQuery = process.env.API_TOKEN ? `?token=${encodeURIComponent(process.env.API_TOKEN)}` : ''
+const publicOrigin = process.env.PUBLIC_URL ? new URL(process.env.PUBLIC_URL) : Astro.url
+const lanHost = publicOrigin.hostname || 'localhost'
+const threadfinBase = `${publicOrigin.protocol}//${lanHost}:34400`
+const threadfinUrl = `${threadfinBase}/web`
+const importSchema = `{
+  "version": 1,
+  "streams": [
+    {
+      "id": "40-char AceStream infohash (required)",
+      "name": "Channel name (required)",
+      "photo_url": "https://example.com/logo.png",
+      "tvg_id": "epg.channel.id",
+      "tvg_name": "Channel name for the guide",
+      "group_title": "Sports",
+      "number": 1,
+      "enabled": true
+    }
+  ]
+}`
 ---
 
 <html lang="en">
@@ -24,37 +47,68 @@ const hasStreams = streams.length > 0
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>AceMux - Stream Manager</title>
     <meta name="description" content="AceMux - A simple and elegant stream manager" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>" />
     <meta name="theme-color" content="#0a0d12" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="AceMux" />
     <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <script define:vars={{ aceStreamBase: import.meta.env.ACESTREAM_BASE || 'http://acestream:6878' }}>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>" />
+    <script define:vars={{ aceStreamBase: process.env.ACESTREAM_BASE || 'http://acestream:6878', aceMuxToken: process.env.API_TOKEN || '' }}>
       window.aceStreamBase = aceStreamBase.replace(/\/+$/, '');
+      window.aceMuxToken = aceMuxToken;
     </script>
   </head>
   <body class="m-0 bg-[#0a0d12] min-h-screen text-[#e6eef7] font-[system-ui,Segoe UI,Roboto,Arial,sans-serif] leading-[1.4] animate-fadeIn">
     <div class="relative mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 max-w-[1000px] xl:max-w-[1040px] 2xl:max-w-[1080px] transition-[max-width] duration-300">
-      <div class="flex items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8 flex-wrap">
-        <h1 class="m-0 text-2xl sm:text-[32px] font-bold tracking-tight text-sky-300 drop-shadow-sm">AceMux</h1>
-        <div class="flex items-center gap-2">
-          <!-- Split button: + Add Stream | ▾ (dropdown with Import) -->
-          <div class="flex relative">
-            <button id="showCreate" class="px-5 py-2.5 rounded-l-xl border border-r-0 border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm font-medium shadow-md">
-              + Add Stream
+      <div class="relative flex items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8 flex-wrap">
+        <div class="flex items-center gap-3">
+          <h1 class="m-0 text-2xl sm:text-[32px] font-bold tracking-tight text-sky-300 drop-shadow-xs">AceMux</h1>
+          <span id="engine-status" class="inline-flex items-center" title="AceStream engine status">
+            <span id="engine-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500 transition-colors"></span>
+          </span>
+        </div>
+
+        <div id="viewToggle" class="inline-flex rounded-xl border border-slate-700/50 bg-[#0e1620] p-0.5">
+          <button id="viewCards" data-view-mode="cards" title="Card view" aria-label="Card view" class="px-2.5 py-1.5 rounded-lg transition-colors inline-flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+              <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+              <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+              <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+            </svg>
+          </button>
+          <button id="viewCompact" data-view-mode="compact" title="Table view" aria-label="Table view" class="px-2.5 py-1.5 rounded-lg transition-colors inline-flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6"/>
+              <line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/>
+              <line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="relative" id="actionsMenuWrap">
+            <button id="actionsMenuBtn" class="px-3 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm inline-flex items-center gap-1.5" aria-haspopup="true" aria-expanded="false">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+                <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+                <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+              </svg>
+              <span>Actions</span>
             </button>
-            <button id="addMenuToggle" class="px-2.5 py-2.5 rounded-r-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors shadow-md" title="More options">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-            </button>
-            <div id="addMenu" class="hidden absolute right-0 top-full mt-1 z-50 bg-[#111a24] border border-slate-700/50 rounded-xl shadow-xl overflow-hidden min-w-[160px]">
-              <button id="importBtn" class="w-full text-left px-4 py-2.5 hover:bg-[#162a3d] transition-colors text-sm whitespace-nowrap">
-                Import from JSON
-              </button>
+            <div id="actionsMenu" class="hidden absolute right-0 mt-2 w-52 rounded-xl border border-slate-700/50 bg-[#0e1620] shadow-xl shadow-black/40 z-50 py-1">
+              <button data-menu="refresh" class="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#162a3d] transition-colors">Refresh Threadfin</button>
+              <button data-menu="export" class="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#162a3d] transition-colors">Export JSON</button>
+              <button data-menu="import" class="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-[#162a3d] transition-colors">Import JSON…</button>
             </div>
           </div>
-          <input id="importFile" type="file" accept=".json" class="hidden" />
+          <input id="importFile" type="file" accept="application/json,.json" class="hidden" />
+          <button id="showCreate" class:list={["px-5 py-2.5 rounded-xl border border-sky-400/40 bg-sky-600 hover:bg-sky-500 text-white transition-colors text-sm font-semibold shadow-md shadow-sky-900/30", { hidden: !hasStreams }]}>+ Add Stream</button>
         </div>
       </div>
 
@@ -62,53 +116,118 @@ const hasStreams = streams.length > 0
 
       {hasStreams && (
         <div class="flex gap-3 flex-wrap items-center mb-5">
-          <input id="searchInput" type="search" placeholder="Search streams…"
-            class="flex-1 min-w-[160px] px-4 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] text-sm outline-none focus:border-slate-500" />
-          <select id="sortSelect"
-            class="px-3 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] text-sm">
+          <input id="searchInput" type="search" placeholder="Search streams…" class="flex-1 min-w-[160px] px-4 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] text-sm outline-none focus:border-slate-500" />
+          <select id="sortSelect" class="px-3 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] text-sm">
+            <option value="default" selected>Default order</option>
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
             <option value="name-asc">Name A → Z</option>
             <option value="name-desc">Name Z → A</option>
             <option value="favorites">Favorites first</option>
           </select>
-          <button id="viewToggle" title="Switch to list view"
-            class="px-3 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm flex items-center">
-            <span data-grid-icon>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/>
-                <rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>
-              </svg>
-            </span>
-            <span data-list-icon class="hidden">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </span>
-          </button>
-          <button id="exportBtn" title="Export streams to JSON"
-            class="px-3 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm">Export</button>
-          <button id="bulkBtn"
-            class="px-3 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm">Select</button>
         </div>
       )}
 
-      <div id="list" class="grid gap-5 animate-slideUp md:grid-cols-2 items-start">
+      <div id="bulkBar" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-40 items-center gap-3 rounded-xl border border-sky-700/40 bg-[#0f2030]/95 px-4 py-2 text-sm shadow-xl shadow-black/40 backdrop-blur">
+        <span id="bulkCount" class="text-slate-300">0 selected</span>
+        <div class="flex gap-2">
+          <button id="bulkDelete" class="px-3 py-1.5 rounded-lg border border-rose-800/50 bg-[#2a1618] hover:bg-[#351a1c] text-rose-200 text-sm">Delete selected</button>
+          <button id="bulkClear" class="px-3 py-1.5 rounded-lg border border-slate-700/50 bg-[#111a24] hover:bg-[#162635] text-sm">Clear</button>
+        </div>
+      </div>
+
+      <div id="cardsView" class="view-panel view-active grid gap-5 animate-slideUp md:grid-cols-2 items-start">
         {!hasStreams && <p class="opacity-80 text-xs italic text-center py-6 md:col-span-2">No streams yet. Add the first one above.</p>}
         <p id="noResults" class="hidden opacity-80 text-xs italic text-center py-6 md:col-span-2">No streams match your search.</p>
         {streams.map((s: Stream) => (
           <StreamCard stream={s} />
         ))}
       </div>
-    </div>
 
-    <!-- Bulk action bar (fixed bottom, shown in select mode) -->
-    <div id="bulkBar" class="hidden fixed bottom-0 left-0 right-0 z-50 bg-[#111a24] border-t border-slate-700/50 px-4 py-3 flex items-center justify-between gap-4 shadow-xl">
-      <span id="bulkCount" class="text-sm text-slate-300">0 selected</span>
-      <div class="flex gap-2">
-        <button id="bulkDelete" class="px-4 py-2 rounded-xl border border-[#7f1d1d]/60 bg-[#2a1618] hover:bg-[#351a1c] transition-colors text-rose-200/90 hover:text-rose-200 text-sm font-medium">Delete selected</button>
-        <button id="bulkCancel" class="px-4 py-2 rounded-xl border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] transition-colors text-sm font-medium">Cancel</button>
+      <div id="tableView" class="view-panel hidden">
+        <table class="stream-table">
+          <thead>
+            <tr>
+              <th class="cell-select"></th>
+              <th>Name</th>
+              <th>Group</th>
+              <th class="cell-number">No.</th>
+              <th class="cell-state">State</th>
+              <th class="cell-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {streams.map((s: Stream) => (
+              <StreamRow stream={s} />
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      <div id="integrationsPanel">
+        {hasStreams && (
+          <details id="integrations" class="mt-8 rounded-2xl border border-[#1f2a37]/70 bg-[#0e1620] px-5 py-4 text-sm">
+            <summary class="cursor-pointer text-slate-300 font-medium">How to connect Plex &amp; Jellyfin</summary>
+            <div class="mt-4 space-y-5 text-slate-400">
+              <div>
+                <h3 class="text-slate-200 font-semibold mb-2">Endpoints</h3>
+                <ul class="space-y-1 break-all">
+                  <li><span class="text-slate-500">M3U playlist:</span> <a class="text-sky-300 hover:underline" href={`${integrationBase}/playlist.m3u${tokenQuery}`} target="_blank" rel="noreferrer">{integrationBase}/playlist.m3u{tokenSuffix}</a></li>
+                  <li><span class="text-slate-500">XMLTV guide:</span> <a class="text-sky-300 hover:underline" href={`${integrationBase}/xmltv.xml${tokenQuery}`} target="_blank" rel="noreferrer">{integrationBase}/xmltv.xml{tokenSuffix}</a></li>
+                  <li><span class="text-slate-500">Status:</span> <a class="text-sky-300 hover:underline" href={`${integrationBase}/healthz`} target="_blank" rel="noreferrer">{integrationBase}/healthz</a></li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 class="text-slate-200 font-semibold mb-2">Jellyfin (no extra service)</h3>
+                <ol class="list-decimal list-inside space-y-1">
+                  <li>Live TV → Tuner Devices → Add → <span class="text-slate-300">M3U Tuner</span> → paste the M3U playlist URL.</li>
+                  <li>Live TV → TV Guide Providers → Add → <span class="text-slate-300">XMLTV</span> → paste the XMLTV URL.</li>
+                  <li>Save and scan channels.</li>
+                </ol>
+              </div>
+
+              <div>
+                <h3 class="text-slate-200 font-semibold mb-2">Plex (requires Plex Pass + Threadfin)</h3>
+                <ol class="list-decimal list-inside space-y-1">
+                  <li>Open <a class="text-sky-300 hover:underline" href={threadfinUrl} target="_blank" rel="noreferrer">Threadfin</a> (<span class="break-all">{threadfinUrl}</span>) and add the M3U playlist and the XMLTV URL as sources.</li>
+                  <li>In Threadfin, set <span class="text-slate-300">Settings → EPG Source = XEPG</span>, then open <span class="text-slate-300">Mapping</span>, enable/map the channels and Save.</li>
+                  <li>In Plex: Settings → Live TV &amp; DVR → Set up a Tuner → select the <span class="text-slate-300">Threadfin / HDHomeRun</span> device (<span class="text-sky-300">{lanHost}:34400</span>). Do not paste the XMLTV URL as the device.</li>
+                  <li>Guide: Threadfin's XMLTV <a class="text-sky-300 hover:underline break-all" href={`${threadfinBase}/xmltv/threadfin.xml`} target="_blank" rel="noreferrer">{threadfinBase}/xmltv/threadfin.xml</a>, or let Plex use the tuner's guide.</li>
+                  <li>Save and scan channels. If a new channel does not show up, refresh/rescan the tuner in Plex.</li>
+                </ol>
+              </div>
+
+              <p class="text-xs opacity-70">Adding, editing or removing a stream here automatically refreshes Threadfin.</p>
+            </div>
+          </details>
+        )}
+      </div>
+
+      <div id="importModal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/70 p-4">
+        <div class="w-full max-w-2xl rounded-2xl border border-[#1f2a37]/70 bg-[#0e1620] p-5 shadow-2xl">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="m-0 text-lg font-semibold text-slate-100">Import streams</h2>
+            <button id="importClose" class="text-slate-400 hover:text-white text-lg leading-none" title="Close">✕</button>
+          </div>
+          <p class="text-xs text-slate-400 mb-3">
+            Paste a JSON array of streams (or <code class="text-sky-300">{'{ "streams": [ … ] }'}</code>).
+            <code class="text-sky-300">id</code> (40-hex AceStream infohash) and <code class="text-sky-300">name</code> are required.
+          </p>
+          <textarea id="importText" rows="9" spellcheck="false" class="w-full rounded-xl border border-slate-700/60 bg-[#08101a] p-3 text-xs font-mono text-slate-200" placeholder={'{ "streams": [ { "id": "…", "name": "…" } ] }'}></textarea>
+          <div class="mt-3 flex items-center justify-between gap-2">
+            <button id="importPickFile" class="px-3 py-2 rounded-lg border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] text-sm">Choose file…</button>
+            <button id="importRun" class="px-5 py-2 rounded-lg border border-sky-400/40 bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold">Import</button>
+          </div>
+          <details class="mt-4 rounded-xl border border-slate-700/50 bg-[#0b1220] p-3">
+            <summary class="cursor-pointer text-sm text-slate-300">Expected schema (copy it to an LLM to format your list)</summary>
+            <pre id="importSchema" class="mt-2 overflow-x-auto text-[11px] leading-relaxed text-slate-400">{importSchema}</pre>
+            <button id="importCopySchema" class="mt-2 px-3 py-1.5 rounded-lg border border-slate-700/50 bg-[#12202e] hover:bg-[#162a3d] text-xs">Copy schema</button>
+          </details>
+        </div>
+      </div>
+
+      <div id="toasts" class="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(92vw,360px)] flex-col gap-2"></div>
     </div>
 
     <script>

@@ -3,120 +3,159 @@ import { Icon } from 'astro-icon/components';
 
 const { stream } = Astro.props;
 
-const aceStreamBase = (import.meta.env.ACESTREAM_BASE || 'http://acestream:6878').replace(/\/+$/, '');
+const publicBase = (process.env.PUBLIC_URL || Astro.url.origin).replace(/\/+$/, '');
 const watchUrl = `/${stream.id}`;
-const vlcUrl = `vlc://${aceStreamBase}/ace/manifest.m3u8?id=${encodeURIComponent(stream.id)}`;
+const streamUrl = `${publicBase}/stream/${stream.id}`;
+const isEnabled = stream.enabled === 1;
+
+const editInputClass = 'w-full px-4 py-2 rounded-lg border border-slate-700/70 bg-[#0b1220] text-sm';
+const editLabelClass = 'text-[11px] uppercase tracking-wide text-slate-500 mb-1 block';
+const badgeClass = 'px-2 py-0.5 rounded-md border';
 ---
 
 <div class:list={[
-  "stream-card group relative overflow-hidden bg-[#111a24] border border-[#1f2a37]/70 rounded-2xl p-5 md:p-6 shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/40 transition-shadow",
-  { "self-start": !stream.photo_url }
+  "stream-card view-item group relative overflow-hidden cursor-pointer bg-[#111a24] border border-[#1f2a37]/70 rounded-2xl p-5 md:p-6 shadow-lg shadow-black/30 hover:bg-[#151f2b] hover:border-sky-800/50 hover:shadow-xl hover:shadow-black/40 transition-all duration-200",
+  { "self-start": !stream.photo_url, "opacity-60": !isEnabled }
 ]}
   data-id={stream.id}
   data-name={stream.name.toLowerCase()}
   data-favorite={stream.is_favorite ? '1' : '0'}
   data-created={stream.created_at}>
-  <!-- Status indicator -->
-  <div class="absolute top-3 right-3 z-10" data-status-wrapper>
-    <div 
-      class="status-indicator w-3 h-3 rounded-full bg-slate-500/60 transition-all duration-500 cursor-help"
-      data-status="checking"
-      title="Checking status..."
-    >
-      <span class="absolute inset-0 rounded-full animate-ping-slow bg-slate-400/40"></span>
+  <!-- Bulk selection -->
+  <label class="absolute top-3 left-3 z-20 inline-flex items-center cursor-pointer" title="Select channel">
+    <input type="checkbox" class="bulk-check accent-sky-500 w-4 h-4" data-select />
+  </label>
+
+  <!-- Status indicator (click to re-check) -->
+  {isEnabled && (
+    <div class="absolute top-3 right-3 z-10" data-status-wrapper>
+      <div
+        class="status-indicator w-3 h-3 rounded-full bg-slate-500/60 transition-all duration-500 cursor-pointer"
+        data-status="checking"
+        data-check
+        title="Checking status..."
+      >
+        <span class="absolute inset-0 rounded-full animate-ping-slow bg-slate-400/40"></span>
+      </div>
     </div>
-  </div>
+  )}
 
   {stream.photo_url && (
-    <div class="mb-4 rounded-xl overflow-hidden relative">
-      <img 
-        src={stream.photo_url} 
-        alt={stream.name} 
-        class="w-full h-48 md:h-60 object-cover rounded-xl bg-black" 
+    <div data-photo class="mb-4 rounded-xl overflow-hidden relative">
+      <img
+        src={stream.photo_url}
+        alt={stream.name}
+        class="w-full h-48 md:h-60 object-cover rounded-xl bg-black"
       />
-      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none"></div>
-      <div class="absolute bottom-0 left-0 p-4 w-full">
-        <h2 class="m-0 text-xl font-semibold leading-tight text-white drop-shadow-md">{stream.name}</h2>
+      <div class="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent pointer-events-none"></div>
+      <div class="absolute bottom-0 left-0 p-4 w-full flex items-center gap-2">
+        <h2 class="m-0 text-xl font-semibold leading-tight text-white drop-shadow-md truncate">{stream.name}</h2>
+        {stream.number !== null && stream.number !== undefined && (
+          <span class="shrink-0 px-2 py-0.5 rounded-md bg-black/50 text-white border border-white/20 text-xs">#{stream.number}</span>
+        )}
       </div>
     </div>
   )}
 
   <div class="space-y-3" data-view>
-    {!stream.photo_url && <h2 class="m-0 mb-4 text-xl font-semibold leading-tight text-white">{stream.name}</h2>}
-    
+    {!stream.photo_url && (
+      <div class="mb-1 pl-6 flex items-center gap-2">
+        <h2 data-field="name" class="m-0 text-xl font-semibold leading-tight text-white truncate">{stream.name}</h2>
+        {stream.number !== null && stream.number !== undefined && (
+          <span data-field="number" class="shrink-0 px-2 py-0.5 rounded-md bg-slate-700/40 text-slate-300 border border-slate-600/40 text-xs">#{stream.number}</span>
+        )}
+      </div>
+    )}
+
+    <div data-meta class="flex flex-wrap items-center gap-2 text-[11px]">
+      <span data-field="enabled" class:list={[badgeClass, "bg-amber-500/15 text-amber-300 border-amber-500/30"]}>{isEnabled ? '' : 'Disabled'}</span>
+      <span data-field="group" class:list={[badgeClass, "bg-sky-500/10 text-sky-300 border-sky-500/30"]}>{stream.group_title || ''}</span>
+      <span data-field="tvg_id" class:list={[badgeClass, "bg-slate-700/30 text-slate-400 border-slate-600/30 font-mono"]}>{stream.tvg_id || ''}</span>
+    </div>
+
     <div class="hidden">{stream.id}</div>
-    
-    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
-      <div class="flex flex-wrap gap-2">
-        <a class="flex-1 sm:flex-none px-4 sm:px-5 py-2 rounded-xl border border-sky-800/30 bg-sky-800/70 hover:bg-sky-700 text-white text-sm no-underline inline-flex items-center justify-center gap-1 font-medium shadow-sm transition-colors" href={watchUrl}>
-          Watch
-        </a>
-        
-        <button 
-          class="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm inline-flex items-center justify-center gap-1.5 transition-colors hover:border-slate-600/40"
-          data-copy-link 
-          title="Copy AceStream link"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0">
-            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-            <path d="m4 16c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2"/>
-          </svg>
-          <span class="hidden xs:inline">Copy</span><span class="xs:hidden">Copy</span>
-        </button>
-        
-        <a 
-          class="px-3 sm:px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm inline-flex items-center justify-center gap-1.5 transition-colors hover:border-slate-600/40"
-          href={vlcUrl} 
-          title="Open in VLC"
-        >
-          <Icon name="vlc" width="14" height="14" />
-          <span>VLC</span>
-        </a>
-      </div>
-      
-      <div class="flex gap-2">
-        <button class="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm transition-colors hover:border-slate-600/40" data-edit>
-          Edit
-        </button>
 
-        <button
-          class="px-3 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm transition-colors hover:border-slate-600/40 opacity-40 hover:opacity-100"
-          data-favorite-btn
-          title="Toggle favorite"
-        >{stream.is_favorite ? '★' : '☆'}</button>
+    <div data-actions class="flex flex-wrap items-center gap-2">
+      <a data-watch class="px-4 sm:px-5 py-2 rounded-xl border border-sky-400/50 bg-sky-600 hover:bg-sky-500 text-white text-sm no-underline inline-flex items-center justify-center gap-1.5 font-semibold shadow-md shadow-sky-900/40 transition-colors" href={watchUrl}>
+        Watch
+      </a>
 
-        <button class="px-3 py-2 rounded-xl border border-[#7f1d1d]/60 bg-[#2a1618] hover:bg-[#351a1c] transition-colors text-rose-200/90 hover:text-rose-200" data-delete title="Delete">
-          <Icon name="trash" width="16" height="16" />
-        </button>
-      </div>
+      <button
+        class="px-3 sm:px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm inline-flex items-center justify-center gap-1.5 transition-colors hover:border-slate-600/40"
+        data-copy-stream
+        data-url={streamUrl}
+        title="Copy stream URL (for VLC, Jellyfin, Threadfin/Plex...)"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+          <path d="m4 16c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2"/>
+        </svg>
+        <span>Copy</span>
+      </button>
+
+      <button class="px-3 sm:px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm transition-colors hover:border-slate-600/40" data-edit>
+        Edit
+      </button>
+
+      <button
+        class:list={["px-3 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] transition-colors hover:border-slate-600/40 favorite-btn", { "is-fav": stream.is_favorite }]}
+        data-favorite-btn
+        title="Toggle favorite"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+          <path d="M12 2.5l2.9 6.2 6.8.7-5.1 4.5 1.5 6.6L12 17.8 5.9 20.5l1.5-6.6L2.3 9.4l6.8-.7z"/>
+        </svg>
+      </button>
+
+      <button class="px-3 py-2 rounded-xl border border-[#7f1d1d]/60 bg-[#2a1618] hover:bg-[#351a1c] transition-colors text-rose-200/90 hover:text-rose-200" data-delete title="Delete">
+        <Icon name="trash" width="16" height="16" />
+      </button>
     </div>
   </div>
 
-  <div class="space-y-3 mt-2" data-editform hidden>
+  <div class="space-y-3 mt-2" data-editform data-id={stream.id} hidden>
     <div class="px-4 py-2 rounded-lg border border-slate-700/70 bg-[#08101a] text-sm opacity-70 font-mono text-[11px] break-all">
       <span class="text-blue-300/80 block mb-1">Stream ID (not editable)</span>
       {stream.id}
     </div>
-    
-    <input 
-      class="w-full px-4 py-2 rounded-lg border border-slate-700/70 bg-[#0b1220] text-sm"
-      name="name" 
-      value={stream.name} 
-      placeholder="Name" 
-    />
-    
-    <input 
-      class="w-full px-4 py-2 rounded-lg border border-slate-700/70 bg-[#0b1220] text-sm"
-      name="photo_url" 
-      value={stream.photo_url || ''} 
-      placeholder="Photo URL" 
-    />
-    
+
+    <div>
+      <label class={editLabelClass}>Name</label>
+      <input class={editInputClass} name="name" value={stream.name} placeholder="Name" />
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div>
+        <label class={editLabelClass}>Logo / Photo URL</label>
+        <input class={editInputClass} name="photo_url" value={stream.photo_url || ''} placeholder="https://…/logo.png" />
+      </div>
+      <div>
+        <label class={editLabelClass}>TVG ID</label>
+        <input class={editInputClass} name="tvg_id" value={stream.tvg_id || ''} placeholder="epg.channel.id" />
+      </div>
+      <div>
+        <label class={editLabelClass}>TVG Name</label>
+        <input class={editInputClass} name="tvg_name" value={stream.tvg_name || ''} placeholder="Channel name" />
+      </div>
+      <div>
+        <label class={editLabelClass}>Group</label>
+        <input class={editInputClass} name="group_title" value={stream.group_title || ''} placeholder="e.g. Sports" />
+      </div>
+      <div>
+        <label class={editLabelClass}>Channel number</label>
+        <input class={editInputClass} name="number" type="number" min="1" max="99999" value={stream.number ?? ''} placeholder="1" />
+      </div>
+      <label class="inline-flex items-end gap-2 text-sm text-slate-300 select-none pb-2">
+        <input type="checkbox" name="enabled" checked={isEnabled} class="accent-sky-500 w-4 h-4" />
+        Enabled
+      </label>
+    </div>
+
     <div class="flex flex-wrap gap-2 pt-1">
       <button class="px-4 py-2 rounded-lg border border-slate-700/70 bg-[#0b1220] hover:bg-[#13202b] text-sm" data-save>
         Save
       </button>
-      
+
       <button class="px-4 py-2 rounded-lg border border-slate-700/70 bg-transparent hover:bg-[#13202b] text-sm" data-cancel>
         Cancel
       </button>

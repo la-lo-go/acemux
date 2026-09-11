@@ -1,85 +1,32 @@
 /**
- * AceStream API integration
+ * Client-side helpers to talk to AceMux's shared-stream endpoints.
  */
-
-import type { AceStreamJsonResponse } from './types'
 
 /**
- * Build the AceStream manifest URLs
+ * URL of the shared MPEG-TS session endpoint. All viewers of the same id read
+ * from the same upstream session, so the engine is only contacted once.
  */
-export function buildStreamUrls(streamId: string): { jsonSrc: string; hlsSrc: string } {
-  const encodedId = encodeURIComponent(streamId)
-  return {
-    jsonSrc: `/ace/manifest.m3u8?id=${encodedId}&format=json`,
-    hlsSrc: `/ace/manifest.m3u8?id=${encodedId}`
-  }
+export function buildStreamUrl(streamId: string, token: string): string {
+  const base = `/stream/${encodeURIComponent(streamId)}`
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base
 }
 
-/**
- * Convert internal AceStream URLs to proxied URLs
- */
-export function proxyUrl(url: string | undefined): string | undefined {
-  if (!url) return url
-  // Replace any internal IP:port combinations with our proxy
-  return url.replace(/http:\/\/[^/]+:6878/g, '')
+export interface SessionStats {
+  active: boolean
+  clients?: number
+  peers?: number | null
+  speed_down?: number | null
+  speed_up?: number | null
+  status?: string | null
+  bytes?: number
 }
 
-/**
- * Fetch stream info with JSON format to get additional URLs
- */
-export async function fetchStreamInfo(jsonSrc: string, hlsSrc: string): Promise<{
-  playbackUrl: string
-  statUrl: string | null
-}> {
+export async function fetchSessionStats(streamId: string): Promise<SessionStats | null> {
   try {
-    //console.log('Fetching stream info from:', jsonSrc)
-    const response = await fetch(jsonSrc)
-    
-    if (!response.ok) {
-      console.log('JSON format not available (status:', response.status, '), using direct HLS')
-      return { playbackUrl: hlsSrc, statUrl: null }
-    }
-
-    const data: AceStreamJsonResponse = await response.json()
-    //console.log('Stream info response:', data)
-
-    if (data.error) {
-      throw new Error(data.error)
-    }
-
-    const playbackUrl = proxyUrl(
-      data.response?.playback_url || data.playback_url
-    ) || hlsSrc
-
-    const statUrl = proxyUrl(
-      data.response?.stat_url || data.stat_url
-    ) || null
-
-    //console.log('Processed URLs - playbackUrl:', playbackUrl, 'statUrl:', statUrl)
-    return { playbackUrl, statUrl }
-  } catch (error) {
-    //console.log('JSON format not available, using direct HLS:', error)
-    return { playbackUrl: hlsSrc, statUrl: null }
-  }
-}
-
-/**
- * Fetch stream statistics
- */
-export async function fetchStats(statUrl: string): Promise<{
-  peers?: number
-  speed_down?: number
-  speed_up?: number
-  status?: string
-} | null> {
-  try {
-    const response = await fetch(statUrl)
+    const response = await fetch(`/api/sessions/${encodeURIComponent(streamId)}`)
     if (!response.ok) return null
-
-    const data = await response.json()
-    return data.response || data
-  } catch (error) {
-    console.warn('Stats fetch error:', error)
+    return (await response.json()) as SessionStats
+  } catch {
     return null
   }
 }

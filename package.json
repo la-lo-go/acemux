@@ -3,23 +3,25 @@
   "type": "module",
   "version": "0.0.1",
   "scripts": {
-    "dev": "astro build && bun run ./dist/server/entry.mjs",
-    "dev:watch": "astro build --watch & bun run ./dist/server/entry.mjs",
-    "build": "astro build",
+    "dev": "bun --bun astro build && bun run ./dist/server/entry.mjs",
+    "dev:watch": "bun --bun astro dev",
+    "build": "bun --bun astro build",
+    "preview": "bun --bun astro preview",
     "start": "bun run ./dist/server/entry.mjs",
-    "astro": "astro"
+    "typecheck": "bun --bun tsc --noEmit",
+    "test": "bun test"
   },
   "dependencies": {
-    "astro": "^5.14.7",
-    "astro-icon": "^1.1.5",
-    "hls-video-element": "^1.5.10"
+    "@astrojs/node": "^11.1.5",
+    "astro": "^7.3.2",
+    "astro-icon": "^1.2.0",
+    "mpegts.js": "^1.8.2"
   },
   "devDependencies": {
-    "@astrojs/tailwind": "^5.1.5",
-    "@nurodev/astro-bun": "^2.1.2",
+    "@astrojs/check": "^0.9.10",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/bun": "latest",
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.18"
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.0"
   }
 }

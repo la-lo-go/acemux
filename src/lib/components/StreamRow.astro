@@ -1,0 +1,109 @@
+---
+import { Icon } from 'astro-icon/components';
+
+const { stream } = Astro.props;
+
+const publicBase = (process.env.PUBLIC_URL || Astro.url.origin).replace(/\/+$/, '');
+const watchUrl = `/${stream.id}`;
+const streamUrl = `${publicBase}/stream/${stream.id}`;
+const isEnabled = stream.enabled === 1;
+
+const editInputClass = 'w-full px-3 py-1.5 rounded-lg border border-slate-700/70 bg-[#0b1220] text-sm';
+const editLabelClass = 'text-[11px] uppercase tracking-wide text-slate-500 mb-1 block';
+---
+
+<tr class:list={["stream-row view-item", { "opacity-60": !isEnabled }]}
+  data-id={stream.id}
+  data-name={stream.name.toLowerCase()}
+  data-favorite={stream.is_favorite ? '1' : '0'}
+  data-created={stream.created_at}>
+  <td class="cell-select">
+    <input type="checkbox" class="bulk-check accent-sky-500 w-4 h-4" data-select />
+  </td>
+
+  <td class="cell-name">
+    <span class="font-medium text-slate-100">{stream.name}</span>
+  </td>
+
+  <td class="cell-group text-slate-400">{stream.group_title || '—'}</td>
+
+  <td class="cell-number text-slate-400">{stream.number !== null && stream.number !== undefined ? `#${stream.number}` : '—'}</td>
+
+  <td class="cell-state">
+    {isEnabled ? (
+      <span
+        class="status-indicator inline-block w-3 h-3 rounded-full bg-slate-500/60 cursor-pointer"
+        data-status="checking"
+        data-check
+        title="Checking status..."
+      ></span>
+    ) : (
+      <span class="text-[11px] text-amber-300">Off</span>
+    )}
+  </td>
+
+  <td class="cell-actions">
+    <div class="flex items-center justify-end gap-2">
+      <button class="row-btn" data-copy-stream data-url={streamUrl} title="Copy stream URL">
+        <span>Copy</span>
+      </button>
+      <button class="row-btn" data-edit>Edit</button>
+      <button class:list={["row-btn favorite-btn", { "is-fav": stream.is_favorite }]} data-favorite-btn title="Toggle favorite">
+        <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+          <path d="M12 2.5l2.9 6.2 6.8.7-5.1 4.5 1.5 6.6L12 17.8 5.9 20.5l1.5-6.6L2.3 9.4l6.8-.7z"/>
+        </svg>
+      </button>
+      <button class="row-btn row-btn-danger" data-delete title="Delete">
+        <Icon name="trash" width="14" height="14" />
+      </button>
+      <a class="row-btn row-btn-primary" data-watch href={watchUrl}>Watch</a>
+    </div>
+  </td>
+</tr>
+
+<tr class="edit-row" data-editform data-id={stream.id} hidden>
+  <td colspan="6">
+    <div class="space-y-3 py-2">
+      <div class="px-3 py-2 rounded-lg border border-slate-700/70 bg-[#08101a] opacity-70 font-mono text-[11px] break-all">
+        <span class="text-blue-300/80 block mb-1">Stream ID (not editable)</span>
+        {stream.id}
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="sm:col-span-2">
+          <label class={editLabelClass}>Name</label>
+          <input class={editInputClass} name="name" value={stream.name} placeholder="Name" />
+        </div>
+        <div>
+          <label class={editLabelClass}>Logo / Photo URL</label>
+          <input class={editInputClass} name="photo_url" value={stream.photo_url || ''} placeholder="https://…/logo.png" />
+        </div>
+        <div>
+          <label class={editLabelClass}>Group</label>
+          <input class={editInputClass} name="group_title" value={stream.group_title || ''} placeholder="e.g. Sports" />
+        </div>
+        <div>
+          <label class={editLabelClass}>TVG ID</label>
+          <input class={editInputClass} name="tvg_id" value={stream.tvg_id || ''} placeholder="epg.channel.id" />
+        </div>
+        <div>
+          <label class={editLabelClass}>TVG Name</label>
+          <input class={editInputClass} name="tvg_name" value={stream.tvg_name || ''} placeholder="Channel name" />
+        </div>
+        <div>
+          <label class={editLabelClass}>Channel number</label>
+          <input class={editInputClass} name="number" type="number" min="1" max="99999" value={stream.number ?? ''} placeholder="1" />
+        </div>
+        <label class="inline-flex items-end gap-2 text-sm text-slate-300 select-none pb-2">
+          <input type="checkbox" name="enabled" checked={isEnabled} class="accent-sky-500 w-4 h-4" />
+          Enabled
+        </label>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button class="px-4 py-2 rounded-lg border border-sky-400/40 bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold" data-save>Save</button>
+        <button class="px-4 py-2 rounded-lg border border-slate-700/70 bg-transparent hover:bg-[#13202b] text-sm" data-cancel>Cancel</button>
+      </div>
+    </div>
+  </td>
+</tr>

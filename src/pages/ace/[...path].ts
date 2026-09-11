@@ -1,90 +1,96 @@
 import type { APIRoute } from 'astro'
 
+const HOP_BY_HOP = new Set([
+  'connection',
+  'keep-alive',
+  'transfer-encoding',
+  'upgrade',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailer',
+])
+
+// Headers worth forwarding to the engine.
+const FORWARD_REQUEST_HEADERS = ['accept', 'user-agent', 'range', 'content-type']
+
+const ENGINE_PORT = ':6878'
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export const ALL: APIRoute = async ({ request, params }) => {
   const base = (process.env.ACESTREAM_BASE || 'http://acestream:6878').replace(/\/+$/, '')
   const url = new URL(request.url)
   const rest = String(params.path || '')
   const target = `${base}/ace/${rest}${url.search}`
 
-  //console.log('[AceStream Proxy] Request:', request.method, rest, url.search)
-  //console.log('[AceStream Proxy] Target:', target)
+  const headers = new Headers()
+  for (const name of FORWARD_REQUEST_HEADERS) {
+    const value = request.headers.get(name)
+    if (value) headers.set(name, value)
+  }
+  if (!headers.has('accept')) headers.set('accept', '*/*')
+  if (!headers.has('user-agent')) headers.set('user-agent', 'AceMux/1.0')
 
-  const init: RequestInit = {
+  const hasBody = !['GET', 'HEAD'].includes(request.method)
+  const init = {
     method: request.method,
-    headers: {
-      'Accept': request.headers.get('Accept') || '*/*',
-      'User-Agent': request.headers.get('User-Agent') || 'AceMux/1.0',
-    },
-    body: ['GET','HEAD'].includes(request.method) ? undefined : (request as any).body
+    headers,
+    ...(hasBody ? { body: request.body, duplex: 'half' as const } : {}),
   }
 
   try {
-    const res = await fetch(target, init)
-    
-    // Get the content type to determine if we need to rewrite URLs
-    const contentType = res.headers.get('content-type') || ''
-    
-    // For JSON responses, rewrite internal AceStream URLs to use our proxy
-    if (contentType.includes('application/json')) {
-      const text = await res.text()
-      // Replace internal AceStream URLs with our proxy URLs
-      // AceStream returns URLs like http://127.0.0.1:6878/ace/... or http://<internal-ip>:6878/ace/...
-      const rewritten = text.replace(
-        /http:\/\/[^\/]+:6878\/ace\//g, 
-        '/ace/'
-      )
-      return new Response(rewritten, { 
-        status: res.status, 
-        headers: {
-          'content-type': 'application/json',
-          'access-control-allow-origin': '*',
-        }
-      })
-    }
-    
-    // For m3u8 playlists, also rewrite URLs
-    if (contentType.includes('mpegurl') || rest.endsWith('.m3u8')) {
-      const text = await res.text()
-      const rewritten = text.replace(
-        /http:\/\/[^\/]+:6878\/ace\//g, 
-        '/ace/'
-      )
-      return new Response(rewritten, { 
-        status: res.status, 
-        headers: {
-          'content-type': 'application/vnd.apple.mpegurl',
-          'access-control-allow-origin': '*',
-        }
-      })
-    }
-    
-    // For binary data (video segments), stream directly
-    const headers = new Headers()
+    const res = await fetch(target, init as RequestInit)
+
+    const responseHeaders = new Headers()
     res.headers.forEach((value, key) => {
-      // Skip hop-by-hop headers
-      if (!['connection', 'keep-alive', 'transfer-encoding'].includes(key.toLowerCase())) {
-        headers.set(key, value)
-      }
+      const lower = key.toLowerCase()
+      if (HOP_BY_HOP.has(lower) || lower === 'content-length') return
+      responseHeaders.set(key, value)
     })
-    headers.set('access-control-allow-origin', '*')
-    
-    return new Response(res.body, { status: res.status, headers })
+    responseHeaders.set('access-control-allow-origin', '*')
+
+    // Rewrite internal engine URLs that leak into JSON/M3U8 bodies so they go
+    // back through this same-origin proxy.
+    const patterns = [
+      new RegExp(`https?://[^/]+${ENGINE_PORT}/ace/`, 'g'),
+      new RegExp(`${escapeRegExp(base)}/ace/`, 'g'),
+    ]
+    const rewrite = (text: string): string =>
+      patterns.reduce((acc, pattern) => acc.replace(pattern, '/ace/'), text)
+
+    const contentType = res.headers.get('content-type') || ''
+    const needsRewrite =
+      contentType.includes('application/json') ||
+      contentType.includes('mpegurl') ||
+      rest.endsWith('.m3u8')
+
+    if (needsRewrite) {
+      const text = await res.text()
+      responseHeaders.set(
+        'content-type',
+        contentType.includes('application/json')
+          ? 'application/json; charset=utf-8'
+          : 'application/vnd.apple.mpegurl'
+      )
+      return new Response(rewrite(text), { status: res.status, headers: responseHeaders })
+    }
+
+    return new Response(res.body, { status: res.status, headers: responseHeaders })
   } catch (error) {
     console.error('[AceStream Proxy] Error:', error)
     console.error('[AceStream Proxy] Target URL:', target)
-    console.error('[AceStream Proxy] Base:', base)
-    
+
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'AceStream server not accessible',
         target,
         base,
-        details: error instanceof Error ? error.message : String(error)
-      }), 
-      { 
-        status: 502,
-        headers: { 'content-type': 'application/json' }
-      }
+        details: error instanceof Error ? error.message : String(error),
+      }),
+      { status: 502, headers: { 'content-type': 'application/json' } }
     )
   }
 }

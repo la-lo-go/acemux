@@ -1,50 +1,80 @@
 ---
 const { hasStreams } = Astro.props;
+
+const inputClass = 'w-full px-4 py-2.5 rounded-xl border border-slate-700/50 bg-slate-900/80 text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm';
+const labelClass = 'text-xs font-medium text-slate-400 mb-1 block';
 ---
 <div id="createWrapper" class={hasStreams ? 'hidden' : ''}>
   <div class="bg-[#111a25] border border-[#1f2a37]/70 rounded-2xl p-4 sm:p-7 mb-6 sm:mb-10 shadow-xl shadow-black/30 animate-slideUp">
-    <h3 class="text-base sm:text-lg font-medium mb-4 sm:mb-5 text-white/90">Create new stream</h3>
+    <h3 class="text-base sm:text-lg font-medium mb-4 sm:mb-5 text-white/90">Add stream</h3>
     <form id="create" class="grid gap-5" autocomplete="off">
       <div class="grid md:grid-cols-2 gap-5">
         <div class="relative">
-          <input 
-            class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-slate-700/50 bg-slate-900/80 text-white focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder-transparent" 
-            name="id" 
+          <input
+            class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-slate-700/50 bg-slate-900/80 text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder-transparent"
+            name="id"
             id="acestream-id"
             placeholder="AceStream ID"
-            pattern="[a-fA-F0-9]{40}"
-            title="Must be a valid 40-character hexadecimal AceStream ID"
-            required 
+            title="Paste an AceStream ID (40 hex chars), an acestream:// link or a getstream URL"
+            required
           />
           <label for="acestream-id" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm transition-all duration-200 pointer-events-none peer-focus:top-2.5 peer-focus:text-xs peer-focus:text-sky-400 peer-[:not(:placeholder-shown)]:top-2.5 peer-[:not(:placeholder-shown)]:text-xs">
-            AceStream ID <span class="text-rose-400">*</span>
+            AceStream ID or link <span class="text-rose-400">*</span>
           </label>
-          <span id="id-error" class="text-rose-400 text-xs hidden mt-1 block">Invalid: must be 40 hex characters</span>
+          <span id="id-error" class="text-rose-400 text-xs hidden mt-1 block">Invalid: no 40-character infohash found</span>
+          <span id="resolve-status" class="text-xs mt-1 hidden block text-slate-500"></span>
         </div>
         <div class="relative">
-          <input 
-            class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-slate-700/50 bg-slate-900/80 text-white focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder-transparent" 
-            name="name" 
+          <input
+            class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-slate-700/50 bg-slate-900/80 text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder-transparent"
+            name="name"
             id="stream-name"
             placeholder="Name"
-            required 
+            required
           />
           <label for="stream-name" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm transition-all duration-200 pointer-events-none peer-focus:top-2.5 peer-focus:text-xs peer-focus:text-sky-400 peer-[:not(:placeholder-shown)]:top-2.5 peer-[:not(:placeholder-shown)]:text-xs">
             Name <span class="text-rose-400">*</span>
           </label>
         </div>
       </div>
-      <div class="relative">
-        <input 
-          class="peer w-full px-4 pt-5 pb-2 rounded-xl border border-slate-700/50 bg-slate-900/80 text-white focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500/50 transition text-sm placeholder-transparent" 
-          name="photo_url" 
-          id="photo-url"
-          placeholder="Photo URL"
-        />
-        <label for="photo-url" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm transition-all duration-200 pointer-events-none peer-focus:top-2.5 peer-focus:text-xs peer-focus:text-sky-400 peer-[:not(:placeholder-shown)]:top-2.5 peer-[:not(:placeholder-shown)]:text-xs">
-          Photo URL <span class="text-slate-500">(optional)</span>
-        </label>
+
+      <div class="grid md:grid-cols-3 gap-5">
+        <div>
+          <label for="photo-url" class={labelClass}>Logo / Photo URL <span class="text-slate-500">(optional)</span></label>
+          <input class={inputClass} name="photo_url" id="photo-url" placeholder="https://…/logo.png" />
+        </div>
+        <div>
+          <label for="group-title" class={labelClass}>Group <span class="text-slate-500">(optional)</span></label>
+          <input class={inputClass} name="group_title" id="group-title" placeholder="e.g. Sports" />
+        </div>
+        <div>
+          <label for="channel-number" class={labelClass}>Channel number <span class="text-slate-500">(optional)</span></label>
+          <input class={inputClass} name="number" id="channel-number" type="number" min="1" max="99999" placeholder="1" />
+        </div>
       </div>
+
+      <label class="inline-flex items-center gap-2 text-sm text-slate-300 select-none">
+        <input type="checkbox" name="enabled" id="enabled" checked class="accent-sky-500 w-4 h-4" />
+        Enabled (published in the M3U / XMLTV)
+      </label>
+
+      <details class="rounded-xl border border-slate-700/50 bg-slate-900/40 px-4 py-3">
+        <summary class="cursor-pointer text-sm text-slate-300">EPG / TV metadata <span class="text-slate-500">(auto-filled, optional)</span></summary>
+        <p class="text-xs text-slate-500 mt-2 mb-3">
+          These values link the channel to the guide and are auto-derived from the stream. Edit them only to match an external EPG.
+        </p>
+        <div class="grid md:grid-cols-2 gap-5">
+          <div>
+            <label for="tvg-id" class={labelClass}>TVG ID</label>
+            <input class={inputClass} name="tvg_id" id="tvg-id" placeholder="epg.channel.id" />
+          </div>
+          <div>
+            <label for="tvg-name" class={labelClass}>TVG Name</label>
+            <input class={inputClass} name="tvg_name" id="tvg-name" placeholder="Channel name" />
+          </div>
+        </div>
+      </details>
+
       <div class="flex items-center gap-4 pt-1">
         <button class="px-5 py-2.5 rounded-xl border border-sky-900/30 bg-sky-600 hover:bg-sky-500 text-white text-sm font-medium shadow-md transition-colors" type="submit">Add Stream</button>
         {hasStreams && <button type="button" id="cancelCreate" class="text-xs text-slate-400 hover:text-white transition-colors">Cancel</button>}
@@ -57,17 +87,91 @@ const { hasStreams } = Astro.props;
 <script>
   const idInput = document.getElementById('acestream-id') as HTMLInputElement;
   const idError = document.getElementById('id-error');
-  const ACESTREAM_ID_REGEX = /^[a-fA-F0-9]{40}$/;
+  const nameInput = document.getElementById('stream-name') as HTMLInputElement | null;
+  const groupInput = document.getElementById('group-title') as HTMLInputElement | null;
+  const tvgIdInput = document.getElementById('tvg-id') as HTMLInputElement | null;
+  const tvgNameInput = document.getElementById('tvg-name') as HTMLInputElement | null;
+  const resolveStatus = document.getElementById('resolve-status');
+
+  let resolveAbort: AbortController | null = null;
+
+  function extractInfohash(raw: string): string | null {
+    const value = raw.trim();
+    const direct = value.match(/[0-9a-fA-F]{40}/);
+    if (direct) return direct[0].toLowerCase();
+    try {
+      const url = new URL(value.replace(/^acestream:\/\//i, 'http://'));
+      const id =
+        url.searchParams.get('id') ??
+        url.searchParams.get('infohash') ??
+        url.searchParams.get('content_id');
+      if (id && /^[0-9a-fA-F]{40}$/.test(id)) return id.toLowerCase();
+    } catch {
+      // not a URL
+    }
+    return null;
+  }
+
+  function setResolveStatus(text: string, tone: 'muted' | 'ok' | 'warn') {
+    if (!resolveStatus) return;
+    resolveStatus.textContent = text;
+    resolveStatus.classList.remove('hidden');
+    resolveStatus.className =
+      'text-xs mt-1 block ' +
+      (tone === 'ok' ? 'text-emerald-400' : tone === 'warn' ? 'text-amber-400' : 'text-slate-500');
+  }
+
+  // EPG id defaults to the AceStream infohash: stable and unique.
+  function applyDefaultEpgId(id: string) {
+    if (tvgIdInput && !tvgIdInput.value.trim()) tvgIdInput.value = id.toLowerCase();
+  }
+
+  function applyName(name: string) {
+    if (!name) return;
+    if (nameInput && !nameInput.value.trim()) nameInput.value = name;
+    if (tvgNameInput && !tvgNameInput.value.trim()) tvgNameInput.value = name;
+  }
+
+  async function resolveStreamInfo() {
+    const hash = extractInfohash(idInput?.value ?? '');
+    if (!idInput || !hash) return;
+
+    applyDefaultEpgId(hash);
+
+    resolveAbort?.abort();
+    resolveAbort = new AbortController();
+    setResolveStatus('Looking up channel metadata…', 'muted');
+
+    try {
+      const res = await fetch(`/api/resolve?id=${hash}`, { signal: resolveAbort.signal });
+      if (!res.ok) throw new Error('resolve failed');
+      const data = await res.json();
+      const title: string | null = data.title || data.name || null;
+      const categories: string[] = Array.isArray(data.categories) ? data.categories : [];
+
+      if (title) {
+        applyName(title);
+        if (groupInput && !groupInput.value.trim() && categories.length > 0) groupInput.value = categories[0];
+        setResolveStatus(`Detected: ${title}`, 'ok');
+      } else {
+        setResolveStatus('Could not detect a name automatically', 'warn');
+      }
+    } catch (err) {
+      if ((err as { name?: string })?.name === 'AbortError') return;
+      setResolveStatus('Could not detect a name automatically', 'warn');
+    }
+  }
 
   if (idInput && idError) {
     idInput.addEventListener('input', () => {
       const value = idInput.value.trim();
-      
+      const hash = extractInfohash(value);
+
       if (value === '') {
         idError.classList.add('hidden');
         idInput.classList.remove('border-rose-500/50', 'focus:ring-rose-500/40');
         idInput.classList.add('border-slate-700/50', 'focus:ring-sky-500/40');
-      } else if (!ACESTREAM_ID_REGEX.test(value)) {
+      } else if (!hash) {
         idError.classList.remove('hidden');
         idInput.classList.remove('border-slate-700/50', 'focus:ring-sky-500/40');
         idInput.classList.add('border-rose-500/50', 'focus:ring-rose-500/40');
@@ -75,14 +179,21 @@ const { hasStreams } = Astro.props;
         idError.classList.add('hidden');
         idInput.classList.remove('border-rose-500/50', 'focus:ring-rose-500/40');
         idInput.classList.add('border-slate-700/50', 'border-emerald-500/50', 'focus:ring-emerald-500/40');
+        applyDefaultEpgId(hash);
       }
     });
 
     idInput.addEventListener('blur', () => {
       const value = idInput.value.trim();
-      if (value !== '' && !ACESTREAM_ID_REGEX.test(value)) {
+      if (value === '') return;
+      const hash = extractInfohash(value);
+      if (!hash) {
         idError.classList.remove('hidden');
+      } else {
+        idInput.value = hash;
       }
     });
+
+    idInput.addEventListener('change', resolveStreamInfo);
   }
 </script>

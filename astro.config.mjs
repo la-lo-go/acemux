@@ -1,32 +1,23 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
-import { loadEnv } from 'vite';
-import bun from '@nurodev/astro-bun';
-import tailwind from '@astrojs/tailwind';
-
+import node from '@astrojs/node';
+import tailwindcss from '@tailwindcss/vite';
 import icon from 'astro-icon';
-
-// Load environment variables
-const env = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
 
 // https://astro.build/config
 export default defineConfig({
     output: 'server',
-    adapter: bun(),
-    integrations: [tailwind({ applyBaseStyles: false }), icon()],
-    server: { 
-        port: Number(env.PORT) || 4321, 
+    adapter: node({ mode: 'standalone' }),
+    integrations: [icon()],
+    // The app has no cookie/session auth, so CSRF origin checks only get in the
+    // way of legitimate API clients (curl, scripts) without adding protection.
+    security: { checkOrigin: false },
+    server: {
+        port: Number(process.env.PORT) || 4321,
         host: true
     },
     vite: {
-        server: {
-            hmr: {
-                port: Number(env.PORT) || 4321
-            }
-        },
-        define: {
-            'process.env.ACESTREAM_BASE': JSON.stringify(env.ACESTREAM_BASE),
-        },
+        plugins: [tailwindcss()],
         ssr: {
             external: ['bun:sqlite']
         },

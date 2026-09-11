@@ -7,23 +7,57 @@ services:
     ports:
       - "6878:6878"
     restart: unless-stopped
-    
+
   acemux:
     build: .
     ports:
       - "4321:4321"
     environment:
       - ACESTREAM_BASE=http://acestream:6878
+      - PUBLIC_URL=${PUBLIC_URL:-}
+      - API_TOKEN=${API_TOKEN:-}
+      - EPG_DAYS=${EPG_DAYS:-2}
+      - THREADFIN_URL=${THREADFIN_URL:-http://threadfin:34400}
+      - TZ=${TZ:-Europe/Madrid}
+      - MAX_CLIENTS_PER_STREAM=${MAX_CLIENTS_PER_STREAM:-6}
+      - MAX_CONCURRENT_STREAMS=${MAX_CONCURRENT_STREAMS:-3}
+      - STREAM_STOP_GRACE_MS=${STREAM_STOP_GRACE_MS:-10000}
+      - ACESTREAM_PID=${ACESTREAM_PID:-acemux}
       - PORT=4321
       - HOST=0.0.0.0
     volumes:
-      - ./data:/app/data
+      # Named volume: portable across Linux, Windows and macOS with no host chown.
+      - acemux_data:/app/data
+      # Bind-mount alternative (Linux/NAS may need `chown 1000:1000 ./data`):
+      # - ./data:/app/data
     depends_on:
       - acestream
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "bun", "-e", "fetch('http://localhost:4321').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:4321/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  threadfin:
+    image: fyb3roptik/threadfin:latest
+    container_name: threadfin
+    # Necesario para Plex (Plex no acepta M3U directo). Jellyfin no lo necesita.
+    ports:
+      - "34400:34400"
+    environment:
+      - PUID=1001
+      - PGID=1001
+      - TZ=${TZ:-Europe/Madrid}
+    volumes:
+      - threadfin-conf:/home/threadfin/conf
+      - threadfin-tmp:/tmp/threadfin
+    depends_on:
+      - acemux
+    restart: unless-stopped
+
+volumes:
+  acemux_data:
+  threadfin-conf:
+  threadfin-tmp:

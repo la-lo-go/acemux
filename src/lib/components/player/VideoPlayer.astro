@@ -5,14 +5,15 @@ import StatsBar from './StatsBar.astro'
 
 interface Props {
   streamId: string
+  streamToken?: string
 }
 
-const { streamId } = Astro.props
+const { streamId, streamToken = '' } = Astro.props
 ---
 
-<div class="player-wrapper" data-stream-id={streamId}>
+<div class="player-wrapper" data-stream-id={streamId} data-stream-token={streamToken}>
   <div class="player-container">
-    <hls-video id="player" controls playsinline muted></hls-video>
+    <video id="player" controls playsinline muted></video>
     <UnmuteBanner />
     <PlayerOverlay />
     <div id="errorLog" class="error-log hidden">
@@ -27,13 +28,13 @@ const { streamId } = Astro.props
 </div>
 
 <script>
-  import 'hls-video-element'
-  import { AceStreamPlayer, getPlayerElements } from '../../player'
+  import { AceStreamPlayer, getPlayerElements, buildStreamUrl } from '../../player'
 
   document.addEventListener('DOMContentLoaded', () => {
     const wrapper = document.querySelector('.player-wrapper')
     const streamId = wrapper?.getAttribute('data-stream-id')
-    
+    const streamToken = wrapper?.getAttribute('data-stream-token') || ''
+
     if (!streamId) {
       console.error('No stream ID found')
       return
@@ -45,7 +46,7 @@ const { streamId } = Astro.props
       return
     }
 
-    const player = new AceStreamPlayer(elements, streamId)
+    const player = new AceStreamPlayer(elements, streamId, buildStreamUrl(streamId, streamToken))
     player.init()
   })
 </script>
@@ -71,13 +72,7 @@ const { streamId } = Astro.props
     width: 100%;
     height: 100%;
   }
-  
-  #player::part(video) {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-  
+
   video {
     position: absolute;
     top: 0;

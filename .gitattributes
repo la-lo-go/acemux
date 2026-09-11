@@ -1,0 +1,4 @@
+# Normalize line endings so shell scripts work inside Docker on any host.
+* text=auto
+*.sh text eol=lf
+entrypoint.sh text eol=lf

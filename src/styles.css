@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root { color-scheme: dark; }
 
@@ -131,44 +129,139 @@ input:focus, button:focus {
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4);
 }
 
-/* Card selected state (bulk select mode) */
-.stream-card.card-selected {
-  border-color: rgba(56, 189, 248, 0.55) !important;
-  background-color: rgba(12, 74, 110, 0.18);
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.22), 0 20px 25px -5px rgba(0,0,0,0.4);
-}
-
-/* Select mode: cards become clickable targets */
-#list.select-mode .stream-card { cursor: pointer; }
-
-/* Stream table (list view) */
-#streamTable { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
-#streamTable thead tr { background-color: rgba(10, 16, 24, 0.7); }
-#streamTable tbody tr { border-top: 1px solid rgba(30, 42, 55, 0.5); transition: background-color 0.12s; }
-#streamTable tbody tr:hover { background-color: #0f1821; }
-.tbl-btn {
-  padding: 0.2rem 0.55rem; border-radius: 0.5rem; border: 1px solid rgba(51,65,85,0.45);
-  background: #111a24; font-size: 0.75rem; cursor: pointer; color: inherit;
-  transition: background-color 0.12s; text-decoration: none; display: inline-flex;
-  align-items: center; white-space: nowrap;
-}
-.tbl-btn:hover { background: #162635; }
-.tbl-btn-watch { border-color: rgba(7,89,133,0.35); background: rgba(7,89,133,0.75); color: white; font-weight: 500; }
-.tbl-btn-watch:hover { background: rgba(3,105,161,0.9); }
-.tbl-btn-del { border-color: rgba(127,29,29,0.6); background: #2a1618; color: rgba(253,164,175,0.9); }
-.tbl-btn-del:hover { background: #351a1c; }
-.tbl-btn-fav { opacity: 0.45; }
-.tbl-btn-fav:hover, .tbl-btn-fav.is-fav { opacity: 1; }
-
-/* HLS Video Element - ensure it fills container */
-hls-video {
+/* Video element - ensure it fills container */
+#player {
   display: block;
   width: 100%;
   height: 100%;
 }
 
-hls-video::part(video) {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+/* Hide empty badge spans in card view */
+[data-meta] span:empty {
+  display: none;
 }
+
+/* Table view */
+.view-panel.hidden {
+  display: none;
+}
+
+.stream-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.stream-table thead th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  border-bottom: 1px solid rgba(31, 42, 55, 0.7);
+  font-weight: 600;
+}
+
+.stream-table tbody tr.stream-row {
+  background: #111a24;
+  border-bottom: 1px solid rgba(31, 42, 55, 0.6);
+  transition: background-color 0.2s ease;
+}
+
+.stream-table tbody tr.stream-row:hover {
+  background: #151f2b;
+}
+
+.stream-table td {
+  padding: 0.55rem 0.75rem;
+  vertical-align: middle;
+  color: #cbd5e1;
+}
+
+.stream-table .cell-select {
+  width: 2.25rem;
+}
+
+.stream-table .cell-name {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.stream-table .cell-number,
+.stream-table .cell-state {
+  width: 4.5rem;
+  text-align: center;
+}
+
+.stream-table .cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.stream-table .row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  background: #0d1620;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.stream-table .row-btn:hover {
+  background: #162635;
+  border-color: rgba(100, 116, 139, 0.6);
+  color: #fff;
+}
+
+.stream-table .row-btn-primary {
+  background: #0284c7;
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #fff;
+  font-weight: 600;
+}
+
+.stream-table .row-btn-primary:hover {
+  background: #0ea5e9;
+}
+
+.stream-table .row-btn-danger {
+  background: #2a1618;
+  border-color: rgba(127, 29, 29, 0.6);
+  color: #fecaca;
+}
+
+.stream-table .row-btn-danger:hover {
+  background: #351a1c;
+}
+
+.stream-table tr.edit-row > td {
+  background: #0b1220;
+  border-bottom: 1px solid rgba(31, 42, 55, 0.7);
+}
+
+/* Favorite star */
+.favorite-btn svg {
+  fill: none;
+  color: #94a3b8;
+}
+
+.favorite-btn:hover svg {
+  color: #fcd34d;
+}
+
+.favorite-btn.is-fav svg {
+  fill: currentColor;
+  color: #f59e0b;
+}
+
+
+
+
