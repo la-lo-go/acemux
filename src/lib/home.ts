@@ -643,9 +643,9 @@ function applyView(mode: ViewMode): void {
 
   for (const [el, active] of buttons) {
     if (!el) continue
-    el.classList.remove('bg-sky-600', 'text-white', 'text-slate-400', 'hover:text-slate-200')
-    if (active) el.classList.add('bg-sky-600', 'text-white')
-    else el.classList.add('text-slate-400', 'hover:text-slate-200')
+    el.classList.remove('text-sky-300', 'text-slate-500', 'hover:text-slate-300')
+    if (active) el.classList.add('text-sky-300')
+    else el.classList.add('text-slate-500', 'hover:text-slate-300')
   }
 
   paintCachedStatuses()

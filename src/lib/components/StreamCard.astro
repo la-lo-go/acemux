@@ -75,11 +75,7 @@ const badgeClass = 'px-2 py-0.5 rounded-md border';
 
     <div class="hidden">{stream.id}</div>
 
-    <div data-actions class="flex flex-wrap items-center gap-2">
-      <a data-watch class="px-4 sm:px-5 py-2 rounded-xl border border-sky-400/50 bg-sky-600 hover:bg-sky-500 text-white text-sm no-underline inline-flex items-center justify-center gap-1.5 font-semibold shadow-md shadow-sky-900/40 transition-colors" href={watchUrl}>
-        Watch
-      </a>
-
+    <div data-actions class="flex flex-wrap items-center justify-end gap-2">
       <button
         class="px-3 sm:px-4 py-2 rounded-xl border border-slate-700/40 bg-[#111a24] hover:bg-[#162635] text-sm inline-flex items-center justify-center gap-1.5 transition-colors hover:border-slate-600/40"
         data-copy-stream
@@ -110,6 +106,10 @@ const badgeClass = 'px-2 py-0.5 rounded-md border';
       <button class="px-3 py-2 rounded-xl border border-[#7f1d1d]/60 bg-[#2a1618] hover:bg-[#351a1c] transition-colors text-rose-200/90 hover:text-rose-200" data-delete title="Delete">
         <Icon name="trash" width="16" height="16" />
       </button>
+
+      <a data-watch class="px-4 sm:px-5 py-2 rounded-xl border border-sky-400/50 bg-sky-600 hover:bg-sky-500 text-white text-sm no-underline inline-flex items-center justify-center gap-1.5 font-semibold shadow-md shadow-sky-900/40 transition-colors" href={watchUrl}>
+        Watch
+      </a>
     </div>
   </div>
 
