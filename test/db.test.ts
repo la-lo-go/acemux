@@ -19,7 +19,7 @@ const dbFile = path.join(
   os.tmpdir(),
   `acemux-db-test-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.sqlite`
 )
-process.env.DB_PATH = dbFile
+process.env.DATABASE_PATH = dbFile
 
 const {
   getAllStreams,
@@ -28,6 +28,8 @@ const {
   createStream,
   updateStream,
   deleteStream,
+  allocateChannelNumber,
+  backfillChannelNumbers,
 } = await import('../src/lib/db')
 
 function clean(): void {
@@ -155,5 +157,104 @@ describe('deleteStream', () => {
 
     expect(getStream('id-1')).toBeNull()
     expect(countStreams()).toBe(0)
+  })
+})
+
+describe('channel numbering', () => {
+  test('asigna números automáticos desde 1000 y no reutiliza al borrar', () => {
+    const a = createStream({ id: 'num-a', name: 'A' })
+    const b = createStream({ id: 'num-b', name: 'B' })
+
+    expect(a.number).toBeGreaterThanOrEqual(1000)
+    expect(b.number).toBe((a.number as number) + 1)
+
+    deleteStream('num-b')
+    const c = createStream({ id: 'num-c', name: 'C' })
+    expect(c.number).toBeGreaterThan(b.number as number)
+  })
+
+  test('respeta un número libre y evita duplicados', () => {
+    createStream({ id: 'num-a', name: 'A', number: 42 })
+    const duplicate = createStream({ id: 'num-b', name: 'B', number: 42 })
+
+    expect(duplicate.number).not.toBe(42)
+    expect(duplicate.number).toBeGreaterThanOrEqual(1000)
+  })
+
+  test('updateStream conserva el número si no se envía y asigna otro si se limpia', () => {
+    createStream({ id: 'num-a', name: 'A', number: 7 })
+
+    const kept = updateStream('num-a', { name: 'A2' })
+    expect(kept!.number).toBe(7)
+
+    const cleared = updateStream('num-a', { name: 'A3', number: null })
+    expect(cleared!.number).not.toBe(7)
+    expect(cleared!.number).toBeGreaterThanOrEqual(1000)
+  })
+
+  test('allocateChannelNumber reserva el high-water mark', () => {
+    const scratch = new Database(':memory:')
+    scratch.exec('CREATE TABLE streams (id TEXT PRIMARY KEY, number INTEGER, created_at DATETIME)')
+
+    expect(allocateChannelNumber(scratch)).toBe(1000)
+    expect(allocateChannelNumber(scratch)).toBe(1001)
+
+    scratch.close()
+  })
+
+  test('backfillChannelNumbers valida, deduplica y es idempotente', () => {
+    const legacyFile = path.join(
+      os.tmpdir(),
+      `acemux-legacy-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.sqlite`
+    )
+    const legacy = new Database(legacyFile, { create: true })
+    legacy.exec(`
+      CREATE TABLE streams (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        photo_url TEXT,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        tvg_id TEXT,
+        tvg_name TEXT,
+        group_title TEXT,
+        number INTEGER,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at DATETIME,
+        updated_at DATETIME
+      )
+    `)
+    const insert = legacy.prepare('INSERT INTO streams (id,name,number,created_at) VALUES (?,?,?,?)')
+    insert.run('a', 'A', null, '2026-01-01 00:00:00')
+    insert.run('b', 'B', null, '2026-01-02 00:00:00')
+    insert.run('c', 'C', 5, '2026-01-03 00:00:00')
+    insert.run('d', 'D', 5, '2026-01-04 00:00:00')
+    insert.run('e', 'E', 0, '2026-01-05 00:00:00')
+    insert.run('f', 'F', 12000, '2026-01-06 00:00:00')
+
+    const number = (id: string): number =>
+      (legacy.prepare('SELECT number FROM streams WHERE id = ?').get(id) as { number: number }).number
+
+    backfillChannelNumbers(legacy)
+
+    expect(number('c')).toBe(5)
+    expect(number('f')).toBe(12000)
+    const assigned = [number('a'), number('b'), number('d'), number('e')]
+    expect(new Set(assigned).size).toBe(4)
+    expect(Math.min(...assigned)).toBeGreaterThan(12000)
+
+    const snapshot = ['a', 'b', 'c', 'd', 'e', 'f'].map(number)
+    backfillChannelNumbers(legacy)
+    expect(['a', 'b', 'c', 'd', 'e', 'f'].map(number)).toEqual(snapshot)
+
+    expect(allocateChannelNumber(legacy)).toBe(Math.max(...snapshot) + 1)
+
+    legacy.close()
+    for (const suffix of ['', '-wal', '-shm']) {
+      try {
+        fs.rmSync(`${legacyFile}${suffix}`, { force: true })
+      } catch {
+        // Windows may keep the WAL file locked briefly; the temp file is harmless
+      }
+    }
   })
 })

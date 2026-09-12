@@ -3,7 +3,7 @@ import { Icon } from 'astro-icon/components';
 
 const { stream } = Astro.props;
 
-const publicBase = (process.env.PUBLIC_URL || Astro.url.origin).replace(/\/+$/, '');
+const publicBase = (process.env.PUBLIC_BASE_URL || Astro.url.origin).replace(/\/+$/, '');
 const watchUrl = `/${stream.id}`;
 const streamUrl = `${publicBase}/stream/${stream.id}`;
 const isEnabled = stream.enabled === 1;

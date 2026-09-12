@@ -32,3 +32,25 @@ export const GET: APIRoute = async ({ request, params }) => {
     },
   })
 }
+
+/** Cheap HEAD: validates the stream without acquiring a P2P session. */
+export const HEAD: APIRoute = ({ request, params }) => {
+  if (!isAuthorized(request)) {
+    return new Response(null, { status: 401 })
+  }
+
+  const id = String(params.id || '')
+  const stream = getStream(id)
+  if (!stream || stream.enabled !== 1) {
+    return new Response(null, { status: 404 })
+  }
+
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'content-type': 'video/mp2t',
+      'cache-control': 'no-store',
+      'access-control-allow-origin': '*',
+    },
+  })
+}

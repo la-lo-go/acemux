@@ -738,16 +738,6 @@ async function updateEngineStatus(): Promise<void> {
   }
 }
 
-async function refreshThreadfin(): Promise<void> {
-  showToast('Requesting Threadfin refresh…', 'info')
-  try {
-    const res = await fetch('/api/threadfin/refresh', { method: 'POST' })
-    showToast(res.ok ? 'Threadfin refresh requested' : 'Threadfin refresh failed', res.ok ? 'ok' : 'error')
-  } catch {
-    showToast('Threadfin refresh failed', 'error')
-  }
-}
-
 function openImportModal(): void {
   const modal = document.getElementById('importModal')
   if (!modal) return
@@ -810,8 +800,7 @@ function initActionsMenu(): void {
     item.addEventListener('click', () => {
       const action = item.getAttribute('data-menu')
       close()
-      if (action === 'refresh') void refreshThreadfin()
-      else if (action === 'export') (window.location.href = '/api/streams/export')
+      if (action === 'export') (window.location.href = '/api/streams/export')
       else if (action === 'import') openImportModal()
     })
   })

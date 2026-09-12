@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro'
 import { createStream, getStream, updateStream } from '../../../lib/db'
 import { parseAceId, parseStreamFields } from '../../../lib/stream-input'
-import { notifyThreadfinUpdate } from '../../../lib/server/threadfin'
 
 const JSON_HEADERS = { 'content-type': 'application/json' }
 
@@ -56,8 +55,6 @@ export const POST: APIRoute = async ({ request }) => {
       imported++
     }
   }
-
-  if (imported > 0 || updated > 0) notifyThreadfinUpdate()
 
   return new Response(JSON.stringify({ imported, updated, skipped }), { headers: JSON_HEADERS })
 }

@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { Database } from 'bun:sqlite'
+import { createDeviceId, isChannelNumber, isValidDeviceId } from './hdhr'
 
 let db: Database | null = null
 
@@ -8,14 +9,136 @@ const COLUMNS =
   'id,name,photo_url,is_favorite,tvg_id,tvg_name,group_title,number,enabled,created_at,updated_at'
 const ORDER_BY = 'ORDER BY (number IS NULL), number, name COLLATE NOCASE'
 
+const AUTO_NUMBER_FLOOR = 999
+const META_DEVICE_ID = 'hdhr_device_id'
+const META_NUMBER_HIGHWATER = 'channel_number_highwater'
+
+function ensureMetaTable(database: Database): void {
+  database.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+}
+
+export function getSetting(database: Database, key: string): string | null {
+  ensureMetaTable(database)
+  const row = database.prepare('SELECT value FROM meta WHERE key = ?').get(key) as
+    | { value: string }
+    | undefined
+  return row?.value ?? null
+}
+
+export function setSetting(database: Database, key: string, value: string): void {
+  ensureMetaTable(database)
+  database
+    .prepare(
+      'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+    )
+    .run(key, value)
+}
+
+function withImmediateTransaction<T>(database: Database, fn: () => T): T {
+  database.exec('BEGIN IMMEDIATE')
+  try {
+    const result = fn()
+    database.exec('COMMIT')
+    return result
+  } catch (error) {
+    try {
+      database.exec('ROLLBACK')
+    } catch {
+      // ignore rollback failures
+    }
+    throw error
+  }
+}
+
+function readHighWater(database: Database): number {
+  const stored = Number.parseInt(getSetting(database, META_NUMBER_HIGHWATER) ?? '', 10)
+  const row = database.prepare('SELECT MAX(number) AS max FROM streams').get() as {
+    max: number | null
+  }
+  const highestInUse = isChannelNumber(row.max) ? row.max : AUTO_NUMBER_FLOOR
+  return Math.max(Number.isFinite(stored) ? stored : AUTO_NUMBER_FLOOR, highestInUse)
+}
+
+/**
+ * Reserve the next free channel number. Numbers are never reused: the
+ * high-water mark is persisted so deleting the highest channel does not free
+ * its number for a future stream (Plex keeps a snapshot of the lineup).
+ */
+export function allocateChannelNumber(database: Database, excludeId?: string): number {
+  return withImmediateTransaction(database, () => {
+    let next = readHighWater(database) + 1
+    while (next <= 99999) {
+      const taken = excludeId
+        ? database.prepare('SELECT id FROM streams WHERE number = ? AND id <> ? LIMIT 1').get(next, excludeId)
+        : database.prepare('SELECT id FROM streams WHERE number = ? LIMIT 1').get(next)
+      if (!taken) break
+      next++
+    }
+    if (next > 99999) throw new Error('no free channel numbers available')
+    setSetting(database, META_NUMBER_HIGHWATER, String(next))
+    return next
+  })
+}
+
+/**
+ * Idempotent backfill: drop invalid/duplicate numbers and assign fresh ones to
+ * the affected rows, raising the high-water mark to the highest valid number.
+ */
+export function backfillChannelNumbers(database: Database): void {
+  ensureMetaTable(database)
+  withImmediateTransaction(database, () => {
+    const rows = database
+      .prepare('SELECT id, number FROM streams ORDER BY created_at ASC, id ASC')
+      .all() as Array<{ id: string; number: number | null }>
+
+    const seen = new Set<number>()
+    const toAssign: string[] = []
+    let highWater = AUTO_NUMBER_FLOOR
+
+    for (const row of rows) {
+      if (!isChannelNumber(row.number) || seen.has(row.number)) {
+        toAssign.push(row.id)
+        continue
+      }
+      seen.add(row.number)
+      if (row.number > highWater) highWater = row.number
+    }
+
+    const stored = Number.parseInt(getSetting(database, META_NUMBER_HIGHWATER) ?? '', 10)
+    if (Number.isFinite(stored) && stored > highWater) highWater = stored
+
+    const assign = database.prepare('UPDATE streams SET number = ? WHERE id = ?')
+    for (const id of toAssign) {
+      highWater += 1
+      assign.run(highWater, id)
+    }
+
+    setSetting(database, META_NUMBER_HIGHWATER, String(highWater))
+  })
+}
+
+/** Stable per-installation HDHomeRun device id (env override wins). */
+export function getOrCreateDeviceId(database: Database = ensureDb()): string {
+  const fromEnv = (process.env.HDHR_DEVICE_ID ?? '').trim().toUpperCase()
+  if (isValidDeviceId(fromEnv)) return fromEnv
+
+  const existing = getSetting(database, META_DEVICE_ID)
+  if (isValidDeviceId(existing)) return existing
+
+  const created = createDeviceId()
+  setSetting(database, META_DEVICE_ID, created)
+  return created
+}
+
 function ensureDb(): Database {
   if (db) return db
-  const dbPath = process.env.DB_PATH || './data/db.sqlite'
+  const dbPath = process.env.DATABASE_PATH || './data/db.sqlite'
   const dir = path.dirname(dbPath)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   db = new Database(dbPath, { create: true })
   db.exec(`
     PRAGMA journal_mode = WAL;
+    PRAGMA busy_timeout = 5000;
     CREATE TABLE IF NOT EXISTS streams (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -29,6 +152,10 @@ function ensureDb(): Database {
       created_at DATETIME DEFAULT (datetime('now')),
       updated_at DATETIME DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
     CREATE TRIGGER IF NOT EXISTS streams_updated_at
     AFTER UPDATE ON streams
     BEGIN
@@ -36,6 +163,7 @@ function ensureDb(): Database {
     END;
   `)
   migrate(db)
+  backfillChannelNumbers(db)
   return db
 }
 
@@ -122,8 +250,18 @@ export function countStreams(): number {
   return row.total
 }
 
+function resolveNewNumber(database: Database, requested: number | null | undefined): number {
+  if (isChannelNumber(requested)) {
+    const taken = database.prepare('SELECT id FROM streams WHERE number = ? LIMIT 1').get(requested)
+    if (!taken) return requested
+  }
+  return allocateChannelNumber(database)
+}
+
 export function createStream(input: StreamInput): Stream {
-  ensureDb().prepare(
+  const database = ensureDb()
+  const number = resolveNewNumber(database, input.number)
+  database.prepare(
     `INSERT INTO streams (id,name,photo_url,tvg_id,tvg_name,group_title,number,enabled)
      VALUES (?,?,?,?,?,?,?,?)`
   ).run(
@@ -133,25 +271,39 @@ export function createStream(input: StreamInput): Stream {
     input.tvg_id ?? null,
     input.tvg_name ?? null,
     input.group_title ?? null,
-    input.number ?? null,
+    number,
     input.enabled === false ? 0 : 1
   )
   return getStream(input.id)!
 }
 
 export function updateStream(id: string, updates: StreamUpdate): Stream | null {
+  const database = ensureDb()
   const current = getStream(id)
   if (!current) return null
+
+  let number: number
+  if (updates.number === undefined) {
+    number = isChannelNumber(current.number) ? current.number : allocateChannelNumber(database, id)
+  } else if (isChannelNumber(updates.number)) {
+    const taken = database
+      .prepare('SELECT id FROM streams WHERE number = ? AND id <> ? LIMIT 1')
+      .get(updates.number, id)
+    number = taken ? allocateChannelNumber(database, id) : updates.number
+  } else {
+    number = allocateChannelNumber(database, id)
+  }
+
   const next = {
     name: updates.name ?? current.name,
     photo_url: updates.photo_url === undefined ? (current.photo_url ?? null) : updates.photo_url,
     tvg_id: updates.tvg_id === undefined ? (current.tvg_id ?? null) : updates.tvg_id,
     tvg_name: updates.tvg_name === undefined ? (current.tvg_name ?? null) : updates.tvg_name,
     group_title: updates.group_title === undefined ? (current.group_title ?? null) : updates.group_title,
-    number: updates.number === undefined ? (current.number ?? null) : updates.number,
+    number,
     enabled: updates.enabled === undefined ? current.enabled : (updates.enabled ? 1 : 0),
   }
-  ensureDb().prepare(
+  database.prepare(
     `UPDATE streams
      SET name = ?, photo_url = ?, tvg_id = ?, tvg_name = ?, group_title = ?, number = ?, enabled = ?
      WHERE id = ?`

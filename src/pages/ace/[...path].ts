@@ -21,7 +21,7 @@ function escapeRegExp(value: string): string {
 }
 
 export const ALL: APIRoute = async ({ request, params }) => {
-  const base = (process.env.ACESTREAM_BASE || 'http://acestream:6878').replace(/\/+$/, '')
+  const base = (process.env.ACESTREAM_ENGINE_URL || 'http://acestream:6878').replace(/\/+$/, '')
   const url = new URL(request.url)
   const rest = String(params.path || '')
   const target = `${base}/ace/${rest}${url.search}`

@@ -44,36 +44,19 @@ services:
     ports:
       - "4321:4321"
     environment:
-      - ACESTREAM_BASE=http://acestream:6878
-      - PUBLIC_URL=${PUBLIC_URL:-}
-      - API_TOKEN=${API_TOKEN:-}
-      - EPG_DAYS=${EPG_DAYS:-2}
-      - TZ=${TZ:-Europe/Madrid}
+      - ACESTREAM_ENGINE_URL=http://acestream:6878
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
+      - ACEMUX_API_TOKEN=${ACEMUX_API_TOKEN:-}
+      - EPG_FILLER_DAYS=${EPG_FILLER_DAYS:-2}
+      - TZ=${TZ:-UTC}
     volumes:
       - acemux_data:/app/data
     depends_on:
       - acestream
     restart: unless-stopped
 
-  threadfin:
-    image: fyb3roptik/threadfin:latest
-    container_name: threadfin
-    profiles: ["plex"]
-    ports:
-      - "34400:34400"
-    environment:
-      - PUID=1001
-      - PGID=1001
-      - TZ=${TZ:-Europe/Madrid}
-    volumes:
-      - threadfin-conf:/home/threadfin/conf
-      - threadfin-tmp:/tmp/threadfin
-    restart: unless-stopped
-
 volumes:
   acemux_data:
-  threadfin-conf:
-  threadfin-tmp:
 ```
 
 Start the stack:
@@ -93,22 +76,22 @@ Access the application at `http://localhost:4321`.
 
 #### Environment Variables
 
-Only `ACESTREAM_BASE` is relevant to get started; every other variable is optional and has a sensible default.
+Only `ACESTREAM_ENGINE_URL` is relevant to get started; every other variable is optional and has a sensible default.
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `ACESTREAM_BASE` | `http://acestream:6878` | AceStream engine URL |
-| `PUBLIC_URL` | _(request host)_ | (optional) LAN base URL reachable by Plex/Jellyfin/Threadfin, e.g. `http://192.168.1.133:4321` |
-| `API_TOKEN` | _(open)_ | (optional) token that protects `/playlist.m3u`, `/stream/:id` and `/xmltv.xml` |
-| `TZ` | `Europe/Madrid` | (optional) timezone |
-| `EPG_DAYS` | `2` | (optional) days of filler EPG in the XMLTV guide |
-| `THREADFIN_URL` | `http://threadfin:34400` | (optional) Threadfin URL to auto-refresh on stream changes |
+| `ACESTREAM_ENGINE_URL` | `http://acestream:6878` | AceStream engine URL |
+| `PUBLIC_BASE_URL` | _(request host)_ | (optional) LAN base URL reachable by Plex/Jellyfin, e.g. `http://192.168.1.100:4321` |
+| `ACEMUX_API_TOKEN` | _(open)_ | (optional) token that protects `/playlist.m3u`, `/stream/:id` and `/xmltv.xml` (Plex tuner endpoints cannot send it) |
+| `TZ` | `UTC` | (optional) timezone |
+| `EPG_FILLER_DAYS` | `2` | (optional) days of filler EPG in the XMLTV guide |
+| `HDHR_DEVICE_ID` | _(persisted)_ | (optional) 8-hex HDHomeRun device id presented to Plex; auto-generated and stored per install |
 | `MAX_CLIENTS_PER_STREAM` | `6` | (optional) viewers sharing a channel, `0` = unlimited |
 | `MAX_CONCURRENT_STREAMS` | `3` | (optional) channels downloading at once, `0` = unlimited |
 | `STREAM_STOP_GRACE_MS` | `10000` | (optional) keep an idle session alive before stopping the engine |
-| `ACESTREAM_PID` | `acemux` | (optional) player id sent to the engine |
+| `ACESTREAM_PLAYER_ID` | `acemux` | (optional) player id sent to the engine |
 | `PORT` / `HOST` | `4321` / `0.0.0.0` | (optional) server binding |
-| `DB_PATH` | `./data/db.sqlite` | (optional) path to the SQLite database |
+| `DATABASE_PATH` | `./data/db.sqlite` | (optional) path to the SQLite database |
 
 #### Data Persistence
 
@@ -135,9 +118,12 @@ AceMux exposes its library to external media players:
 | `GET /playlist.m3u` | M3U playlist with `tvg-id`, `tvg-name`, `tvg-logo`, `group-title` and `tvg-chno` attributes |
 | `GET /stream/:id` | Stable MPEG-TS stream (the AceStream engine is resolved server-side) |
 | `GET /xmltv.xml` | AceMux's own EPG guide in XMLTV format |
+| `GET /discover.json` | Virtual HDHomeRun tuner descriptor for Plex |
+| `GET /lineup.json` | Virtual HDHomeRun channel lineup for Plex |
+| `GET /hdhr/xmltv.xml` | Plex guide (numeric channel ids matching the lineup) |
 | `GET /healthz` | JSON status |
 
-The `playlist.m3u`, `stream/:id` and `xmltv.xml` endpoints accept `?token=<API_TOKEN>`.
+The `playlist.m3u`, `stream/:id` and `xmltv.xml` endpoints accept `?token=<ACEMUX_API_TOKEN>`.
 
 #### Import / Export
 
@@ -191,8 +177,8 @@ bun install
 
 3. Create a `.env` file (see `.env.example`):
 ```env
-ACESTREAM_BASE=http://localhost:6878
-DB_PATH=./data/db.sqlite
+ACESTREAM_ENGINE_URL=http://localhost:6878
+DATABASE_PATH=./data/db.sqlite
 PORT=4321
 ```
 
@@ -216,53 +202,42 @@ AceMux exposes its library as an M3U playlist plus an XMLTV guide, so Plex and J
 
 Before you start:
 
-- **Set `PUBLIC_URL`** to the LAN address of the host running AceMux (e.g. `http://192.168.1.133:4321`). AceMux uses it to build the stream URLs inside the playlist, so it must be reachable by the device that consumes the M3U.
-- If you configured `API_TOKEN`, append `?token=<API_TOKEN>` to every URL below.
-- **Auto-refresh**: whenever you add, edit or delete a stream, AceMux notifies Threadfin (`THREADFIN_URL`) to reload the playlist and guide, so changes show up without waiting for its schedule.
+- **Set `PUBLIC_BASE_URL`** to the LAN address of the host running AceMux (e.g. `http://192.168.1.100:4321`). AceMux uses it to build the stream URLs inside the playlist, so it must be reachable by the device that consumes the M3U.
 
-### Jellyfin (no Threadfin needed)
+### Jellyfin
 
-Jellyfin reads the M3U and XMLTV directly.
+Jellyfin reads the M3U and XMLTV directly. If you configured `ACEMUX_API_TOKEN`, append `?token=<ACEMUX_API_TOKEN>` to the URLs.
 
 1. Go to **Live TV → Tuner Devices → Add**.
 2. Add an **M3U Tuner**:
    ```
-   http://<IP-LAN>:4321/playlist.m3u?token=<API_TOKEN>
+   http://<IP-LAN>:4321/playlist.m3u?token=<ACEMUX_API_TOKEN>
    ```
 3. Go to **Live TV → TV Guide Providers → Add** and pick **XMLTV**:
    ```
-   http://<IP-LAN>:4321/xmltv.xml?token=<API_TOKEN>
+   http://<IP-LAN>:4321/xmltv.xml?token=<ACEMUX_API_TOKEN>
    ```
 4. Save and scan. Channels appear immediately and the guide shows the stream name.
 
-### Plex (Threadfin required)
+### Plex (no extra service)
 
-Plex needs **Plex Pass** and cannot read M3U directly, so it goes through [Threadfin](https://github.com/Threadfin/Threadfin). Threadfin is part of the stack (service `threadfin`, port `34400`).
+Plex needs **Plex Pass** and cannot read an M3U directly, but AceMux now emulates an HDHomeRun tuner itself: no Threadfin required. Plex talks to AceMux on port `4321` and uses the numeric channel ids emitted by `/hdhr/xmltv.xml`.
 
-1. Start the stack:
-   ```sh
-   docker compose up -d
+1. In Plex, go to **Settings → Live TV & DVR → Set Up Plex DVR**.
+2. When no tuner is found, use the link to enter the device address manually: `<IP-LAN>:4321` (address only, no path). Plex detects an **HDHomeRun HDTC-2US**.
+3. Scan channels. On the guide step, choose **"Have an XMLTV program guide on your server?"** and enter:
    ```
-2. Open Threadfin at `http://<IP-LAN>:34400` and add the sources:
-   - **Menu → Playlist → Add new**: name `acemux`, type **M3U**, URL `http://<IP-LAN>:4321/playlist.m3u?token=<API_TOKEN>`
-   - **Menu → XMLTV → Add new**: name `acemux`, type **XMLTV**, URL `http://<IP-LAN>:4321/xmltv.xml?token=<API_TOKEN>`
-   - **Menu → Settings → EPG Source = XEPG** (XEPG means "use my XMLTV files"; PMS would ask Plex/Jellyfin to provide the guide instead).
-3. Open **Menu → Mapping**. Every channel that should be visible to Plex must be mapped to its EPG channel:
-   - AceMux emits a `tvg-id` equal to the XMLTV channel id, so **new** channels are mapped automatically.
-   - For existing rows, pick the matching channel and click **Save**.
-   - At least one mapped and enabled channel is required; otherwise Plex receives an empty lineup (`/lineup.json` returns `null`).
-4. In Plex, go to **Settings → Live TV & DVR → Set up a Tuner**:
-   - **Device**: select the discovered **Threadfin / HDTC-2US** HDHomeRun, or enter the device address `192.168.1.133:34400` (address only, no path).
-   - Do **not** paste the XMLTV URL in the device field: the XMLTV URL belongs to the guide step.
-   - **Guide**: choose Threadfin's XMLTV `http://<IP-LAN>:34400/xmltv/threadfin.xml`, or let Plex take the guide from the tuner.
-5. Save and scan channels. The programme names are the stream names from AceMux (edit a stream's name to change what Plex shows).
+   http://<IP-LAN>:4321/hdhr/xmltv.xml
+   ```
+4. Review the channel mapping and save. The programme names are the stream names from AceMux.
+5. When you add channels in AceMux later, run **Rescan channels** in Plex so the new lineup is picked up.
 
-> [!TIP]
-> If Plex reports "no hardware found", you pasted the XMLTV URL in the tuner/device field. The **device** is Threadfin's emulated HDHomeRun on port `34400`; the **XMLTV URL** is only for the guide.
+> [!NOTE]
+> The tuner endpoints (`/discover.json`, `/lineup.json`, `/lineup_status.json`, `/device.xml`, `/hdhr/xmltv.xml`) cannot require `ACEMUX_API_TOKEN` because Plex does not send credentials. Expose AceMux only on a trusted LAN, or put it behind a reverse proxy. The regular `/xmltv.xml` and `/playlist.m3u` keep using the token.
 
 ### Networking notes
 
-- Every client (Jellyfin, Plex, Threadfin) must be able to reach `PUBLIC_URL`. On Docker Desktop (Windows/macOS) use the host LAN IP.
+- Every client (Jellyfin, Plex) must be able to reach `PUBLIC_BASE_URL`. On Docker Desktop (Windows/macOS) use the host LAN IP.
 - On Linux/NAS the AceStream P2P engine performs better with `network_mode: host`, as it needs incoming peer traffic. Docker Desktop does not support host networking.
 
 ## Roadmap

@@ -28,7 +28,7 @@ RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh && mkdir -p /app/
 
 ENV HOST=0.0.0.0
 ENV PORT=4321
-ENV DB_PATH=/app/data/db.sqlite
+ENV DATABASE_PATH=/app/data/db.sqlite
 EXPOSE 4321/tcp
 
 ENTRYPOINT ["/entrypoint.sh"]

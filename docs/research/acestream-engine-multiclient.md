@@ -4,7 +4,7 @@ Investigación sobre fuentes primarias (documentación oficial, wiki archivada, 
 proxies y foro oficial). Fecha: 2026-09-11.
 
 Convención: **HECHO** = afirmado explícitamente por una fuente primaria.
-**INFERENCIA** = deducción mía a partir de hechos, indicada como tal.
+**INFERENCIA** = deducción propia a partir de hechos, indicada como tal.
 **CONFIANZA**: Alta / Media / Baja.
 
 ---

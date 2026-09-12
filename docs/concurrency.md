@@ -55,7 +55,7 @@ download** (whether Plex, Jellyfin, VLC or the web player, as long as they use `
 | `MAX_CLIENTS_PER_STREAM` | `6` | Viewers per channel (`0` = no limit) |
 | `MAX_CONCURRENT_STREAMS` | `3` | Simultaneous channels (`0` = no limit) |
 | `STREAM_STOP_GRACE_MS` | `10000` | Grace period before stopping a session with no clients |
-| `ACESTREAM_PID` | `acemux` | Player id sent to the engine |
+| `ACESTREAM_PLAYER_ID` | `acemux` | Player id sent to the engine |
 
 `GET /healthz` exposes `activeStreams` and `sessions` (clients, bytes, start) to
 observe the state.

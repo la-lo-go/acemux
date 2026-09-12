@@ -69,4 +69,20 @@ describe('buildXmltv', () => {
     expect(xml).toContain('<icon src="http://logo.png?a=1&amp;b=2"/>')
     expect(xml).toContain('<title>A &amp; B &lt;C&gt; &quot;D&quot; &apos;E&apos;</title>')
   })
+
+  test('idMode number usa el número de canal y nunca emite "null"', () => {
+    const xml = buildXmltv(
+      [
+        { id: INFOHASH, name: 'Canal', tvg_id: 'uno', tvg_logo: null, number: 10 },
+        { id: INFOHASH, name: 'Sin número', tvg_id: 'dos', tvg_logo: null, number: null },
+      ],
+      { days: 1, now: NOW, idMode: 'number' }
+    )
+
+    expect(xml).toContain('<channel id="10">')
+    expect(xml).toContain('channel="10"')
+    expect(xml).toContain('<channel id="dos">')
+    expect(xml).not.toContain('id="null"')
+    expect(xml).not.toContain('channel="null"')
+  })
 })

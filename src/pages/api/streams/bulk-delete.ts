@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro'
 import { deleteStream, getStream } from '../../../lib/db'
-import { notifyThreadfinUpdate } from '../../../lib/server/threadfin'
 
 const JSON_HEADERS = { 'content-type': 'application/json' }
 
@@ -20,8 +19,6 @@ export const POST: APIRoute = async ({ request }) => {
     deleteStream(id)
     deleted++
   }
-
-  if (deleted > 0) notifyThreadfinUpdate()
 
   return new Response(JSON.stringify({ deleted }), { headers: JSON_HEADERS })
 }

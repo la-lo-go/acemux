@@ -12,7 +12,7 @@ if (!stream) {
   return Astro.redirect('/')
 }
 
-const aceStreamBase = (process.env.ACESTREAM_BASE || 'http://acestream:6878').replace(/\/+$/, '')
+const aceStreamBase = (process.env.ACESTREAM_ENGINE_URL || 'http://acestream:6878').replace(/\/+$/, '')
 const vlcUrl = `vlc://${aceStreamBase}/ace/manifest.m3u8?id=${encodeURIComponent(id)}`
 ---
 
@@ -28,7 +28,7 @@ const vlcUrl = `vlc://${aceStreamBase}/ace/manifest.m3u8?id=${encodeURIComponent
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="AceMux" />
     <link rel="apple-touch-icon" href="/icon.svg" />
-    <script define:vars={{ aceStreamBase: process.env.ACESTREAM_BASE || 'http://acestream:6878', streamId: id }}>
+    <script define:vars={{ aceStreamBase: process.env.ACESTREAM_ENGINE_URL || 'http://acestream:6878', streamId: id }}>
       window.aceStreamBase = aceStreamBase.replace(/\/+$/, '');
       window.streamId = streamId;
     </script>
@@ -64,7 +64,7 @@ const vlcUrl = `vlc://${aceStreamBase}/ace/manifest.m3u8?id=${encodeURIComponent
         </div>
       </div>
 
-      <VideoPlayer streamId={id} streamToken={process.env.API_TOKEN ?? ''} />
+      <VideoPlayer streamId={id} streamToken={process.env.ACEMUX_API_TOKEN ?? ''} />
     </div>
 
     <script>

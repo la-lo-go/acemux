@@ -340,7 +340,7 @@ export function getStreamManager(): StreamManager {
   if (singleton) return singleton
 
   const engine = engineBase()
-  const pid = process.env.ACESTREAM_PID || 'acemux'
+  const pid = process.env.ACESTREAM_PLAYER_ID || 'acemux'
 
   singleton = new StreamManager({
     open: (aceId, signal) =>

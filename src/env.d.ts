@@ -1,7 +1,7 @@
 /// <reference types="astro/client" />
 
 interface ImportMetaEnv {
-  readonly ACESTREAM_BASE: string;
+  readonly ACESTREAM_ENGINE_URL: string;
 }
 
 interface ImportMeta {

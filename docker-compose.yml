@@ -13,16 +13,16 @@ services:
     ports:
       - "4321:4321"
     environment:
-      - ACESTREAM_BASE=http://acestream:6878
-      - PUBLIC_URL=${PUBLIC_URL:-}
-      - API_TOKEN=${API_TOKEN:-}
-      - EPG_DAYS=${EPG_DAYS:-2}
-      - THREADFIN_URL=${THREADFIN_URL:-http://threadfin:34400}
-      - TZ=${TZ:-Europe/Madrid}
+      - ACESTREAM_ENGINE_URL=http://acestream:6878
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
+      - ACEMUX_API_TOKEN=${ACEMUX_API_TOKEN:-}
+      - EPG_FILLER_DAYS=${EPG_FILLER_DAYS:-2}
+      - HDHR_DEVICE_ID=${HDHR_DEVICE_ID:-}
+      - TZ=${TZ:-UTC}
       - MAX_CLIENTS_PER_STREAM=${MAX_CLIENTS_PER_STREAM:-6}
       - MAX_CONCURRENT_STREAMS=${MAX_CONCURRENT_STREAMS:-3}
       - STREAM_STOP_GRACE_MS=${STREAM_STOP_GRACE_MS:-10000}
-      - ACESTREAM_PID=${ACESTREAM_PID:-acemux}
+      - ACESTREAM_PLAYER_ID=${ACESTREAM_PLAYER_ID:-acemux}
       - PORT=4321
       - HOST=0.0.0.0
     volumes:
@@ -40,24 +40,5 @@ services:
       retries: 3
       start_period: 10s
 
-  threadfin:
-    image: fyb3roptik/threadfin:latest
-    container_name: threadfin
-    # Necesario para Plex (Plex no acepta M3U directo). Jellyfin no lo necesita.
-    ports:
-      - "34400:34400"
-    environment:
-      - PUID=1001
-      - PGID=1001
-      - TZ=${TZ:-Europe/Madrid}
-    volumes:
-      - threadfin-conf:/home/threadfin/conf
-      - threadfin-tmp:/tmp/threadfin
-    depends_on:
-      - acemux
-    restart: unless-stopped
-
 volumes:
   acemux_data:
-  threadfin-conf:
-  threadfin-tmp:

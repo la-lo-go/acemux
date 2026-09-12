@@ -8,7 +8,7 @@ export const GET: APIRoute = ({ request }) => {
     return new Response('Unauthorized', { status: 401 })
   }
 
-  const parsedDays = Number.parseInt(process.env.EPG_DAYS ?? '2', 10)
+  const parsedDays = Number.parseInt(process.env.EPG_FILLER_DAYS ?? '2', 10)
   const days = Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : 2
 
   const xml = buildXmltv(

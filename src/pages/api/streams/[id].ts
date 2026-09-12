@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro'
 import { getStream, updateStream, deleteStream, toggleFavorite } from '../../../lib/db'
 import { parseStreamFields } from '../../../lib/stream-input'
-import { notifyThreadfinUpdate } from '../../../lib/server/threadfin'
 
 const JSON_HEADERS = { 'content-type': 'application/json' }
 
@@ -30,7 +29,6 @@ export const PUT: APIRoute = async ({ params, request }) => {
   if (!stream) {
     return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: JSON_HEADERS })
   }
-  notifyThreadfinUpdate()
   return new Response(JSON.stringify(stream), { headers: JSON_HEADERS })
 }
 
@@ -49,6 +47,5 @@ export const DELETE: APIRoute = ({ params }) => {
     return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: JSON_HEADERS })
   }
   deleteStream(id)
-  notifyThreadfinUpdate()
   return new Response(JSON.stringify({ ok: true }), { headers: JSON_HEADERS })
 }

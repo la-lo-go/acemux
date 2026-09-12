@@ -1,4 +1,5 @@
 import { normalizeAceId } from './server/acestream'
+import { MAX_CHANNEL_NUMBER, MIN_CHANNEL_NUMBER } from './hdhr'
 
 export const INFOHASH_RE = /^[0-9a-f]{40}$/
 
@@ -8,7 +9,7 @@ export interface StreamFields {
   tvg_id: string | null
   tvg_name: string | null
   group_title: string | null
-  number: number | null
+  number: number | null | undefined
   enabled: boolean
 }
 
@@ -26,10 +27,25 @@ function bool(value: unknown, fallback: boolean): boolean {
   return fallback
 }
 
-function intOrNull(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') return null
-  const parsed = Number.parseInt(String(value), 10)
-  return Number.isFinite(parsed) ? parsed : null
+/**
+ * `undefined` = field absent (keep current number), `null` = explicitly
+ * cleared (AceMux will allocate a fresh one), otherwise a validated integer.
+ */
+function numberField(
+  body: Record<string, unknown>
+): { ok: true; value: number | null | undefined } | { ok: false; error: string } {
+  const value = body.number
+  if (!('number' in body) || value === undefined) return { ok: true, value: undefined }
+  if (value === null || value === '') return { ok: true, value: null }
+
+  const parsed = typeof value === 'number' ? value : Number(String(value).trim())
+  if (!Number.isInteger(parsed) || parsed < MIN_CHANNEL_NUMBER || parsed > MAX_CHANNEL_NUMBER) {
+    return {
+      ok: false,
+      error: `number must be an integer between ${MIN_CHANNEL_NUMBER} and ${MAX_CHANNEL_NUMBER}`,
+    }
+  }
+  return { ok: true, value: parsed }
 }
 
 /**
@@ -49,6 +65,9 @@ export function parseStreamFields(
   const name = text(body.name)
   if (!name) return { ok: false, error: 'name is required' }
 
+  const number = numberField(body)
+  if (!number.ok) return { ok: false, error: number.error }
+
   return {
     ok: true,
     fields: {
@@ -57,7 +76,7 @@ export function parseStreamFields(
       tvg_id: text(body.tvg_id),
       tvg_name: text(body.tvg_name),
       group_title: text(body.group_title),
-      number: intOrNull(body.number),
+      number: number.value,
       enabled: bool(body.enabled, true),
     },
   }
