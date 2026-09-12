@@ -28,8 +28,10 @@ const {
   createStream,
   updateStream,
   deleteStream,
+  toggleFavorite,
   allocateChannelNumber,
   backfillChannelNumbers,
+  replaceStreamId,
 } = await import('../src/lib/db')
 
 function clean(): void {
@@ -256,5 +258,48 @@ describe('channel numbering', () => {
         // Windows may keep the WAL file locked briefly; the temp file is harmless
       }
     }
+  })
+})
+
+describe('replaceStreamId', () => {
+  test('mueve el stream a un nuevo id conservando todos los campos', () => {
+    const created = createStream({
+      id: 'old-src',
+      name: 'Canal',
+      photo_url: 'http://logo.png',
+      tvg_id: 'tvg-1',
+      tvg_name: 'Nombre TV',
+      group_title: 'Deportes',
+      number: 42,
+      enabled: false,
+    })
+    toggleFavorite('old-src')
+
+    const replaced = replaceStreamId('old-src', 'new-src')
+
+    expect(replaced).not.toBeNull()
+    expect(getStream('old-src')).toBeNull()
+
+    const next = getStream('new-src')!
+    expect(next.name).toBe('Canal')
+    expect(next.photo_url).toBe('http://logo.png')
+    expect(next.tvg_id).toBe('tvg-1')
+    expect(next.tvg_name).toBe('Nombre TV')
+    expect(next.group_title).toBe('Deportes')
+    expect(next.number).toBe(42)
+    expect(next.enabled).toBe(0)
+    expect(next.is_favorite).toBe(1)
+    expect(next.created_at).toBe(created.created_at)
+  })
+
+  test('devuelve null si falta el origen o el destino ya existe', () => {
+    expect(replaceStreamId('missing', 'new-src')).toBeNull()
+
+    createStream({ id: 'keep-a', name: 'A' })
+    createStream({ id: 'keep-b', name: 'B' })
+
+    expect(replaceStreamId('keep-a', 'keep-b')).toBeNull()
+    expect(getStream('keep-a')).not.toBeNull()
+    expect(getStream('keep-b')).not.toBeNull()
   })
 })

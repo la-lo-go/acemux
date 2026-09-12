@@ -323,3 +323,25 @@ export function updateStream(id: string, updates: StreamUpdate): Stream | null {
 export function deleteStream(id: string): void {
   ensureDb().prepare('DELETE FROM streams WHERE id = ?').run(id)
 }
+
+/**
+ * Replaces a stream's AceStream id in place: every other field is preserved
+ * (including channel number, favorite flag and creation date), so TV clients
+ * keep their mapping when a source dies and a new infohash takes over.
+ */
+export function replaceStreamId(oldId: string, newId: string): Stream | null {
+  const database = ensureDb()
+  if (!getStream(oldId)) return null
+  if (getStream(newId)) return null
+
+  withImmediateTransaction(database, () => {
+    database.prepare(
+      `INSERT INTO streams (id,name,photo_url,is_favorite,tvg_id,tvg_name,group_title,number,enabled,created_at,updated_at)
+       SELECT ?,name,photo_url,is_favorite,tvg_id,tvg_name,group_title,number,enabled,created_at,updated_at
+       FROM streams WHERE id = ?`
+    ).run(newId, oldId)
+    database.prepare('DELETE FROM streams WHERE id = ?').run(oldId)
+  })
+
+  return getStream(newId) ?? null
+}

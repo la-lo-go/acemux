@@ -114,9 +114,9 @@ const badgeClass = 'px-2 py-0.5 rounded-md border';
   </div>
 
   <div class="space-y-3 mt-2" data-editform data-id={stream.id} hidden>
-    <div class="px-4 py-2 rounded-lg border border-slate-700/70 bg-[#08101a] text-sm opacity-70 font-mono text-[11px] break-all">
-      <span class="text-blue-300/80 block mb-1">Stream ID (not editable)</span>
-      {stream.id}
+    <div>
+      <label class={editLabelClass}>AceStream ID <span class="text-slate-500 normal-case">(change it to swap the source, everything else stays)</span></label>
+      <input class={`${editInputClass} font-mono text-[11px]`} name="id" value={stream.id} placeholder="40-char infohash" />
     </div>
 
     <div>
