@@ -218,6 +218,8 @@ interface TestResponse {
   peers?: number | null
   speed_down?: number | null
   status?: string | null
+  serviceName?: string | null
+  serviceProvider?: string | null
   reason?: string
 }
 
@@ -273,8 +275,11 @@ function testToStatus(data: TestResponse): StatusResult {
   const detail = [fmt(peers, speedDown), data.bytes ? `${Math.round(data.bytes / 1024)} KB` : '']
     .filter(Boolean)
     .join(' · ')
+  const name = data.serviceName
+    ? `${data.serviceName}${data.serviceProvider ? ` (${data.serviceProvider})` : ''}`
+    : null
 
-  if (data.ok) return { status: 'online', title: 'Working', detail: detail || 'Stream OK' }
+  if (data.ok) return { status: 'online', title: name ?? 'Working', detail: detail || 'Stream OK' }
   return { status: 'offline', title: 'Not working', detail: data.reason || 'No data received' }
 }
 

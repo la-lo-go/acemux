@@ -1,10 +1,13 @@
 import type { APIRoute } from 'astro'
 import { getStream } from '../../../lib/db'
 import { getStreamManager } from '../../../lib/server/stream-manager'
+import { SdtProbe } from '../../../lib/ts-sdt'
 
 const ACQUIRE_TIMEOUT_MS = 18_000
 const READ_TIMEOUT_MS = 12_000
 const MIN_BYTES = 96 * 1024
+const MAX_SNIFF_BYTES = 1_500_000
+const SNIFF_BUDGET_MS = 4_000
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -45,16 +48,24 @@ export const GET: APIRoute = async ({ params }) => {
   }
 
   const reader = acquired.stream.getReader()
+  const probe = new SdtProbe()
+  const sniffUntil = Date.now() + SNIFF_BUDGET_MS
   let bytes = 0
   const killer = setTimeout(() => {
     void reader.cancel().catch(() => {})
   }, READ_TIMEOUT_MS)
 
   try {
-    while (bytes < MIN_BYTES) {
+    while (
+      bytes < MIN_BYTES ||
+      (bytes < MAX_SNIFF_BYTES && !probe.complete && Date.now() < sniffUntil)
+    ) {
       const { value, done } = await reader.read()
       if (done) break
-      if (value) bytes += value.byteLength
+      if (value) {
+        bytes += value.byteLength
+        probe.push(value)
+      }
     }
   } catch {
     // stream errored; treated as no data
@@ -86,12 +97,15 @@ export const GET: APIRoute = async ({ params }) => {
     }
   }
 
+  const info = probe.result
   return json({
     ok: bytes > 0,
     bytes,
     peers,
     speed_down: speedDown,
     status,
+    serviceName: info?.serviceName ?? null,
+    serviceProvider: info?.serviceProvider ?? null,
     ms: Date.now() - started,
   })
 }

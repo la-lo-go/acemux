@@ -22,7 +22,17 @@ const labelClass = 'text-xs font-medium text-slate-400 mb-1 block';
             AceStream ID or link <span class="text-rose-400">*</span>
           </label>
           <span id="id-error" class="text-rose-400 text-xs hidden mt-1 block">Invalid: no 40-character infohash found</span>
-          <span id="resolve-status" class="text-xs mt-1 hidden block text-slate-500"></span>
+          <div class="mt-1 flex items-center gap-3">
+            <button
+              type="button"
+              id="detect-stream"
+              class="text-xs text-sky-300 hover:text-sky-200 hover:underline disabled:opacity-50 disabled:no-underline transition-colors"
+              title="Connect to the stream and read its channel name from the broadcast (DVB SDT)"
+            >
+              Detect from stream
+            </button>
+            <span id="resolve-status" class="text-xs hidden text-slate-500"></span>
+          </div>
         </div>
         <div class="relative">
           <input
@@ -92,8 +102,9 @@ const labelClass = 'text-xs font-medium text-slate-400 mb-1 block';
   const tvgIdInput = document.getElementById('tvg-id') as HTMLInputElement | null;
   const tvgNameInput = document.getElementById('tvg-name') as HTMLInputElement | null;
   const resolveStatus = document.getElementById('resolve-status');
+  const detectBtn = document.getElementById('detect-stream') as HTMLButtonElement | null;
 
-  let resolveAbort: AbortController | null = null;
+  let detectAbort: AbortController | null = null;
 
   function extractInfohash(raw: string): string | null {
     const value = raw.trim();
@@ -132,34 +143,85 @@ const labelClass = 'text-xs font-medium text-slate-400 mb-1 block';
     if (tvgNameInput && !tvgNameInput.value.trim()) tvgNameInput.value = name;
   }
 
-  async function resolveStreamInfo() {
+  // "DAZN F1 Spain" -> "dazn-f1-spain". Only replaces an empty id or the
+  // infohash default; never overwrites something the user typed.
+  function applySuggestedEpgId(name: string) {
+    if (!tvgIdInput) return;
+    const current = tvgIdInput.value.trim();
+    if (current && !/^[0-9a-f]{40}$/.test(current)) return;
+    const slug = name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60);
+    if (slug) tvgIdInput.value = slug;
+  }
+
+  async function detectFromStream() {
     const hash = extractInfohash(idInput?.value ?? '');
-    if (!idInput || !hash) return;
+    if (!hash) {
+      setResolveStatus('Paste a valid AceStream ID first', 'warn');
+      return;
+    }
 
     applyDefaultEpgId(hash);
+    detectAbort?.abort();
+    detectAbort = new AbortController();
 
-    resolveAbort?.abort();
-    resolveAbort = new AbortController();
-    setResolveStatus('Looking up channel metadata…', 'muted');
+    const originalLabel = detectBtn?.textContent ?? 'Detect from stream';
+    if (detectBtn) {
+      detectBtn.disabled = true;
+      detectBtn.textContent = 'Detecting…';
+    }
+    setResolveStatus('Connecting to the stream to read its channel name…', 'muted');
 
     try {
-      const res = await fetch(`/api/resolve?id=${hash}`, { signal: resolveAbort.signal });
-      if (!res.ok) throw new Error('resolve failed');
-      const data = await res.json();
-      const title: string | null = data.title || data.name || null;
-      const categories: string[] = Array.isArray(data.categories) ? data.categories : [];
+      const res = await fetch(`/api/probe?id=${hash}`, { signal: detectAbort.signal });
+      const data = (await res.json().catch(() => ({}))) as {
+        serviceName?: string | null;
+        serviceProvider?: string | null;
+        title?: string | null;
+        categories?: string[];
+      };
+      const name = data.serviceName || data.title || null;
 
-      if (title) {
-        applyName(title);
+      if (name) {
+        applyName(name);
+        applySuggestedEpgId(name);
+        const categories = Array.isArray(data.categories) ? data.categories : [];
         if (groupInput && !groupInput.value.trim() && categories.length > 0) groupInput.value = categories[0];
-        setResolveStatus(`Detected: ${title}`, 'ok');
+        const provider = data.serviceProvider ? ` · ${data.serviceProvider}` : '';
+        setResolveStatus(`Detected: ${name}${provider}`, 'ok');
       } else {
-        setResolveStatus('Could not detect a name automatically', 'warn');
+        setResolveStatus('Could not read a channel name from the stream', 'warn');
       }
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return;
-      setResolveStatus('Could not detect a name automatically', 'warn');
+      setResolveStatus('Detection failed', 'warn');
+    } finally {
+      if (detectBtn) {
+        detectBtn.disabled = false;
+        detectBtn.textContent = originalLabel;
+      }
     }
+  }
+
+  detectBtn?.addEventListener('click', detectFromStream);
+
+  // Auto-detect as soon as the ID changes if any auto-fillable field is still
+  // empty (TVG ID only counts as empty while it holds the infohash default).
+  function needsDetection(): boolean {
+    const name = nameInput?.value.trim() ?? '';
+    const tvgName = tvgNameInput?.value.trim() ?? '';
+    const tvgId = tvgIdInput?.value.trim() ?? '';
+    return !name || !tvgName || !tvgId || /^[0-9a-f]{40}$/.test(tvgId);
+  }
+
+  function autoDetectFromStream() {
+    if (!needsDetection()) return;
+    void detectFromStream();
   }
 
   if (idInput && idError) {
@@ -194,6 +256,8 @@ const labelClass = 'text-xs font-medium text-slate-400 mb-1 block';
       }
     });
 
-    idInput.addEventListener('change', resolveStreamInfo);
+    idInput.addEventListener('change', () => {
+      autoDetectFromStream();
+    });
   }
 </script>
