@@ -28,6 +28,8 @@
 - **Visual library**: custom thumbnails, favorites, search, sort, grid or compact table view
 - **Bulk actions**: delete or edit many channels at once
 - **Stable channel numbering**: persisted, validated and never recycled, so TV clients keep their mapping
+- **Auto-detected names**: when you add a stream, the channel name and provider are read from the broadcast itself (DVB SDT) to fill TVG Name/TVG ID
+- **Source swap**: edit a stream's AceStream ID to point it at a new infohash; channel number, guide ids and every other field stay untouched
 - **Import / Export**: back up and restore the whole library as JSON
 - **Stream health**: live engine, peer and speed indicators per channel
 - **Filler EPG**: an XMLTV guide is generated for every channel, configurable with `EPG_FILLER_DAYS`
