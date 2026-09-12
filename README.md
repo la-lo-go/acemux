@@ -3,20 +3,16 @@
 <div align="center">
   <img src="docs/preview.png" alt="AceMux stream library" width="800">
 
-  **Self-hosted live TV for AceStream.** AceMux turns `acestream://` links and
-  40-character infohashes into a real channel library, then publishes it to Plex,
-  Jellyfin, Emby, VLC and the browser — all from a single Docker container.
+  **AceStream live TV for Plex, Jellyfin, Emby, VLC and the browser.**
 
-  It keeps **one P2P download per channel** shared by every viewer, emulates an
-  **HDHomeRun tuner** for Plex Live TV & DVR, and exports standard **M3U + XMLTV**
-  for anything else. No external database, no transcoding, no extra services.
+  Paste an `acestream://` link and AceMux turns it into a channel: one P2P download
+  shared by every viewer, a built-in HDHomeRun tuner, and M3U + XMLTV outputs.
+  Single Docker container, no external database.
 
   [![CI](https://github.com/la-lo-go/acemux/actions/workflows/ci.yml/badge.svg)](https://github.com/la-lo-go/acemux/actions/workflows/ci.yml)
   [![Docker Pulls](https://img.shields.io/docker/pulls/lalogo/acemux)](https://hub.docker.com/r/lalogo/acemux)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 </div>
-
-**Works with:** Plex (Live TV & DVR, Plex Pass) · Jellyfin · Emby · VLC · Kodi · any M3U/XMLTV player · built-in web player
 
 ## What AceMux does
 
@@ -115,15 +111,20 @@ Only `ACESTREAM_ENGINE_URL` is relevant to get started; every other variable is 
 
 </details>
 
-#### Live TV integration (Plex, Jellyfin, Emby, VLC)
+## Live TV integration (Plex, Jellyfin, Emby, VLC)
 
-AceMux publishes your library as a virtual HDHomeRun tuner plus standard M3U and XMLTV endpoints, so every media server and player can show it as live TV.
+AceMux publishes your library as a **virtual HDHomeRun tuner** and as standard **M3U + XMLTV** endpoints, so your media server shows it as live TV.
 
-Before you start:
+| Client | How it connects | Guide |
+|--------|-----------------|-------|
+| **Plex** (Plex Pass) | HDHomeRun tuner — add AceMux by network address | `http://<IP-LAN>:4321/hdhr/xmltv.xml` |
+| **Jellyfin / Emby** | M3U tuner | `http://<IP-LAN>:4321/xmltv.xml` |
+| **VLC / Kodi** | Open the M3U playlist directly | `http://<IP-LAN>:4321/xmltv.xml` |
 
-- **Set `PUBLIC_BASE_URL`** to the LAN address of the host running AceMux (e.g. `http://192.168.1.100:4321`). AceMux uses it to build the stream URLs inside the playlist, so it must be reachable by the device that consumes the M3U.
+> [!IMPORTANT]
+> Set `PUBLIC_BASE_URL` to the LAN address of the host running AceMux (e.g. `http://192.168.1.100:4321`) so the stream URLs are reachable from your players.
 
-**Jellyfin / Emby**
+### Jellyfin / Emby
 
 Jellyfin and Emby read the M3U playlist and XMLTV guide directly. If you configured `ACEMUX_API_TOKEN`, append `?token=<ACEMUX_API_TOKEN>` to the URLs.
 
@@ -138,7 +139,7 @@ Jellyfin and Emby read the M3U playlist and XMLTV guide directly. If you configu
    ```
 4. Save and scan. Channels appear immediately and the guide shows the stream name.
 
-**Plex (virtual HDHomeRun tuner)**
+### Plex (virtual HDHomeRun tuner)
 
 Plex needs **Plex Pass** and cannot read an M3U directly, so AceMux presents itself as an **HDHomeRun network tuner**. Add it by network address and Plex reads the channel lineup directly, using the numeric channel ids emitted by `/hdhr/xmltv.xml` for the guide.
 
@@ -154,13 +155,15 @@ Plex needs **Plex Pass** and cannot read an M3U directly, so AceMux presents its
 > [!NOTE]
 > The tuner endpoints (`/discover.json`, `/lineup.json`, `/lineup_status.json`, `/device.xml`, `/hdhr/xmltv.xml`) cannot require `ACEMUX_API_TOKEN` because Plex does not send credentials. Expose AceMux only on a trusted LAN, or put it behind a reverse proxy. The regular `/xmltv.xml` and `/playlist.m3u` keep using the token.
 
-**Networking notes**
+### Networking notes
 
 - Every client (Jellyfin, Plex) must be able to reach `PUBLIC_BASE_URL`. On Docker Desktop (Windows/macOS) use the host LAN IP.
 - On Linux/NAS the AceStream P2P engine performs better with `network_mode: host`, as it needs incoming peer traffic. Docker Desktop does not support host networking.
 
+## Reference
+
 <details>
-<summary><h4>Data Persistence</h4></summary>
+<summary><h3>Data Persistence</h3></summary>
 
 By default the SQLite database lives in the `acemux_data` named volume mounted at `/app/data`. Named volumes work the same on Linux, Windows and macOS with no host-side permission setup.
 
@@ -179,7 +182,7 @@ volumes:
 </details>
 
 <details>
-<summary><h4>Endpoints</h4></summary>
+<summary><h3>Endpoints</h3></summary>
 
 AceMux exposes its library to external media players:
 
@@ -198,7 +201,7 @@ The `playlist.m3u`, `stream/:id` and `xmltv.xml` endpoints accept `?token=<ACEMU
 </details>
 
 <details>
-<summary><h4>Import / Export</h4></summary>
+<summary><h3>Import / Export</h3></summary>
 
 Use **Actions → Export JSON** in the web UI to download your whole library (`acemux-streams.json`), and **Actions → Import JSON…** to restore it or bulk-add channels by pasting JSON (or picking a file). The import dialog also shows the schema with a **Copy** button so you can hand it to an LLM to format a list.
 
@@ -227,7 +230,7 @@ Only `id` (a 40-hex infohash, or an `acestream://` link containing one) and `nam
 </details>
 
 <details>
-<summary><h4>Concurrency (multiple viewers)</h4></summary>
+<summary><h3>Concurrency (multiple viewers)</h3></summary>
 
 The AceStream engine **only serves one player per stream**: a second request to the same `id` replaces the first. To support multiple viewers, AceMux keeps **a single upstream download per channel** and fans it out among all clients of `/stream/:id`; the engine session is stopped only when the last client leaves.
 
@@ -240,7 +243,7 @@ Details and limitations in [`docs/concurrency.md`](docs/concurrency.md).
 
 </details>
 
-### Development (contributors)
+## Development (contributors)
 
 1. Clone the repository:
 ```sh
