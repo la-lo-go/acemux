@@ -103,8 +103,21 @@ const labelClass = 'text-xs font-medium text-slate-400 mb-1 block';
   const tvgNameInput = document.getElementById('tvg-name') as HTMLInputElement | null;
   const resolveStatus = document.getElementById('resolve-status');
   const detectBtn = document.getElementById('detect-stream') as HTMLButtonElement | null;
+  const createForm = document.getElementById('create') as HTMLFormElement | null;
+  const formError = document.getElementById('err');
 
   let detectAbort: AbortController | null = null;
+  let detectSeq = 0;
+  const DETECT_LABEL = 'Detect from stream';
+
+  // Values written by the automatic detection, per field. Anything else means
+  // the user typed it: auto-fill may overwrite these, never user input.
+  const autofill = {
+    name: null as string | null,
+    tvgName: null as string | null,
+    tvgId: null as string | null,
+    group: null as string | null,
+  };
 
   function extractInfohash(raw: string): string | null {
     const value = raw.trim();
@@ -137,18 +150,34 @@ const labelClass = 'text-xs font-medium text-slate-400 mb-1 block';
     if (tvgIdInput && !tvgIdInput.value.trim()) tvgIdInput.value = id.toLowerCase();
   }
 
-  function applyName(name: string) {
-    if (!name) return;
-    if (nameInput && !nameInput.value.trim()) nameInput.value = name;
-    if (tvgNameInput && !tvgNameInput.value.trim()) tvgNameInput.value = name;
+  function isReplaceable(input: HTMLInputElement | null, auto: string | null): boolean {
+    if (!input) return false;
+    const value = input.value.trim();
+    return value === '' || (auto !== null && value === auto);
   }
 
-  // "DAZN F1 Spain" -> "dazn-f1-spain". Only replaces an empty id or the
-  // infohash default; never overwrites something the user typed.
+  function applyName(name: string) {
+    if (!name) return;
+    if (isReplaceable(nameInput, autofill.name)) {
+      if (nameInput) nameInput.value = name;
+      autofill.name = name;
+    }
+    if (isReplaceable(tvgNameInput, autofill.tvgName)) {
+      if (tvgNameInput) tvgNameInput.value = name;
+      autofill.tvgName = name;
+    }
+  }
+
+  // "DAZN F1 Spain" -> "dazn-f1-spain". Replaces an empty id, the infohash
+  // default or a previous auto-suggestion; never overwrites user input.
   function applySuggestedEpgId(name: string) {
     if (!tvgIdInput) return;
     const current = tvgIdInput.value.trim();
-    if (current && !/^[0-9a-f]{40}$/.test(current)) return;
+    const isInfohash = /^[0-9a-f]{40}$/.test(current);
+    const replaceable =
+      current === '' || isInfohash || (autofill.tvgId !== null && current === autofill.tvgId);
+    if (!replaceable) return;
+
     const slug = name
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -156,8 +185,57 @@ const labelClass = 'text-xs font-medium text-slate-400 mb-1 block';
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 60);
-    if (slug) tvgIdInput.value = slug;
+    if (!slug) return;
+    tvgIdInput.value = slug;
+    autofill.tvgId = slug;
   }
+
+  // Detection failed for the current id: drop values that came from a previous
+  // auto-detection so the form never submits stale metadata.
+  function clearAutoFilled(hash: string) {
+    if (isReplaceable(nameInput, autofill.name)) {
+      if (nameInput) nameInput.value = '';
+    }
+    if (isReplaceable(tvgNameInput, autofill.tvgName)) {
+      if (tvgNameInput) tvgNameInput.value = '';
+    }
+    if (isReplaceable(tvgIdInput, autofill.tvgId) || /^[0-9a-f]{40}$/.test(tvgIdInput?.value.trim() ?? '')) {
+      if (tvgIdInput) tvgIdInput.value = hash;
+    }
+    if (groupInput && autofill.group !== null && groupInput.value.trim() === autofill.group) {
+      groupInput.value = '';
+    }
+    autofill.name = null;
+    autofill.tvgName = null;
+    autofill.tvgId = null;
+    autofill.group = null;
+  }
+
+  function resetFormState() {
+    detectAbort?.abort();
+    detectAbort = null;
+    autofill.name = null;
+    autofill.tvgName = null;
+    autofill.tvgId = null;
+    autofill.group = null;
+
+    if (resolveStatus) {
+      resolveStatus.textContent = '';
+      resolveStatus.classList.add('hidden');
+    }
+    if (formError) formError.hidden = true;
+    if (idError) idError.classList.add('hidden');
+    idInput?.classList.remove(
+      'border-rose-500/50',
+      'focus:ring-rose-500/40',
+      'border-emerald-500/50',
+      'focus:ring-emerald-500/40'
+    );
+    idInput?.classList.add('border-slate-700/50', 'focus:ring-sky-500/40');
+  }
+
+  // Covers both Cancel and the reset after a successful add.
+  createForm?.addEventListener('reset', resetFormState);
 
   async function detectFromStream() {
     const hash = extractInfohash(idInput?.value ?? '');
@@ -169,8 +247,8 @@ const labelClass = 'text-xs font-medium text-slate-400 mb-1 block';
     applyDefaultEpgId(hash);
     detectAbort?.abort();
     detectAbort = new AbortController();
+    const seq = ++detectSeq;
 
-    const originalLabel = detectBtn?.textContent ?? 'Detect from stream';
     if (detectBtn) {
       detectBtn.disabled = true;
       detectBtn.textContent = 'Detecting…';
@@ -191,32 +269,44 @@ const labelClass = 'text-xs font-medium text-slate-400 mb-1 block';
         applyName(name);
         applySuggestedEpgId(name);
         const categories = Array.isArray(data.categories) ? data.categories : [];
-        if (groupInput && !groupInput.value.trim() && categories.length > 0) groupInput.value = categories[0];
+        if (groupInput && categories.length > 0) {
+          const currentGroup = groupInput.value.trim();
+          if (currentGroup === '' || (autofill.group !== null && currentGroup === autofill.group)) {
+            groupInput.value = categories[0];
+            autofill.group = categories[0];
+          }
+        }
         const provider = data.serviceProvider ? ` · ${data.serviceProvider}` : '';
         setResolveStatus(`Detected: ${name}${provider}`, 'ok');
       } else {
+        clearAutoFilled(hash);
         setResolveStatus('Could not read a channel name from the stream', 'warn');
       }
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return;
+      clearAutoFilled(hash);
       setResolveStatus('Detection failed', 'warn');
     } finally {
-      if (detectBtn) {
+      if (detectBtn && seq === detectSeq) {
         detectBtn.disabled = false;
-        detectBtn.textContent = originalLabel;
+        detectBtn.textContent = DETECT_LABEL;
       }
     }
   }
 
   detectBtn?.addEventListener('click', detectFromStream);
 
-  // Auto-detect as soon as the ID changes if any auto-fillable field is still
-  // empty (TVG ID only counts as empty while it holds the infohash default).
+  // Re-detect when any auto-fillable field is still empty or holds a value
+  // written by a previous detection (or the infohash default). Fields the user
+  // typed are left alone and never trigger a rewrite.
   function needsDetection(): boolean {
-    const name = nameInput?.value.trim() ?? '';
-    const tvgName = tvgNameInput?.value.trim() ?? '';
     const tvgId = tvgIdInput?.value.trim() ?? '';
-    return !name || !tvgName || !tvgId || /^[0-9a-f]{40}$/.test(tvgId);
+    return (
+      isReplaceable(nameInput, autofill.name) ||
+      isReplaceable(tvgNameInput, autofill.tvgName) ||
+      isReplaceable(tvgIdInput, autofill.tvgId) ||
+      /^[0-9a-f]{40}$/.test(tvgId)
+    );
   }
 
   function autoDetectFromStream() {

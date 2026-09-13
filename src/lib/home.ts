@@ -145,6 +145,8 @@ function initCreateForm(): void {
 
   if (cancelCreateBtn && createWrapper && showCreateBtn) {
     cancelCreateBtn.addEventListener('click', () => {
+      const createForm = document.getElementById('create') as HTMLFormElement | null
+      createForm?.reset()
       createWrapper.classList.add('hidden')
       showCreateBtn.style.display = 'block'
     })
